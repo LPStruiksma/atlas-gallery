@@ -1,0 +1,3911 @@
+{
+ "schema": 1,
+ "version": "SHARE-1BC-E (#1118)",
+ "source": "synthetic coordinates from bc_frames.py; not S24+ runtime measurement",
+ "density_px_per_dp": 2.8125,
+ "min_hit_px": 135,
+ "min_photo_visible": 0.4,
+ "palette": [
+  "#000000",
+  "#0E1030",
+  "#14152A",
+  "#2639C9",
+  "#3448E0",
+  "#5A5F7A",
+  "#8C9BFF",
+  "#9AA0B8",
+  "#F2F3F8",
+  "#FFFFFF"
+ ],
+ "frames": [
+  {
+   "file": "BC-menu-light",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.789,
+   "modal_px": [
+    607.2,
+    290,
+    448.8,
+    645.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      615.2,
+      312.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      615.2,
+      462.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      615.2,
+      612.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      615.2,
+      762.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    615.2,
+    312.5,
+    432.8,
+    150.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 448.8,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-dark",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.789,
+   "modal_px": [
+    607.2,
+    290,
+    448.8,
+    645.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      615.2,
+      312.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      615.2,
+      462.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      615.2,
+      612.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      615.2,
+      762.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    615.2,
+    312.5,
+    432.8,
+    150.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 448.8,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-light-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.623,
+   "modal_px": [
+    305,
+    250,
+    448.8,
+    645.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      272.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      422.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      572.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      722.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    272.5,
+    432.8,
+    150.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 448.8,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-dark-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.623,
+   "modal_px": [
+    305,
+    250,
+    448.8,
+    645.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      272.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      422.5,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      572.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      722.6,
+      432.8,
+      150.0
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    272.5,
+    432.8,
+    150.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 448.8,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-light-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.286,
+   "modal_px": [
+    268.5,
+    290,
+    787.5,
+    1157.3
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      276.5,
+      312.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      276.5,
+      495.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      276.5,
+      700.4,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      276.5,
+      905.3,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      276.5,
+      1219.9,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    276.5,
+    312.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-light-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.2,
+   "modal_px": [
+    305,
+    135.0,
+    787.5,
+    810.0
+   ],
+   "scroll": {
+    "container": "menu",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     137.0,
+     787.5,
+     806.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      157.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      340.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      545.4,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      750.3,
+      771.5,
+      192.7
+     ],
+     "lines": 2,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      750.3,
+      771.5,
+      314.6
+     ]
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      1064.9,
+      771.5,
+      204.9
+     ]
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    157.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-light-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.2,
+   "modal_px": [
+    305,
+    135.0,
+    787.5,
+    810.0
+   ],
+   "scroll": {
+    "container": "menu",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     137.0,
+     787.5,
+     806.0
+    ],
+    "offset_px": 347.3,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": null,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      157.5,
+      771.5,
+      183
+     ]
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      137.0,
+      771.5,
+      61.1
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      340.5,
+      771.5,
+      204.9
+     ]
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      198.1,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      403.0,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-dark-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.286,
+   "modal_px": [
+    268.5,
+    290,
+    787.5,
+    1157.3
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      276.5,
+      312.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      276.5,
+      495.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      276.5,
+      700.4,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      276.5,
+      905.3,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      276.5,
+      1219.9,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    276.5,
+    312.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-dark-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.2,
+   "modal_px": [
+    305,
+    135.0,
+    787.5,
+    810.0
+   ],
+   "scroll": {
+    "container": "menu",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     137.0,
+     787.5,
+     806.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      157.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      340.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      545.4,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      750.3,
+      771.5,
+      192.7
+     ],
+     "lines": 2,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      750.3,
+      771.5,
+      314.6
+     ]
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      1064.9,
+      771.5,
+      204.9
+     ]
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    157.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-dark-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.2,
+   "modal_px": [
+    305,
+    135.0,
+    787.5,
+    810.0
+   ],
+   "scroll": {
+    "container": "menu",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     137.0,
+     787.5,
+     806.0
+    ],
+    "offset_px": 347.3,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": null,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      157.5,
+      771.5,
+      183
+     ]
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      137.0,
+      771.5,
+      61.1
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      340.5,
+      771.5,
+      204.9
+     ]
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      198.1,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      403.0,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-noswap-light-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.413,
+   "modal_px": [
+    268.5,
+    290,
+    787.5,
+    952.4
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      276.5,
+      312.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      276.5,
+      495.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      276.5,
+      700.4,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      276.5,
+      1015.0,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    276.5,
+    312.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "BC-menu-noaiedit-dark-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.539,
+   "modal_px": [
+    268.5,
+    290,
+    787.5,
+    747.5
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      276.5,
+      312.5,
+      771.5,
+      183.0
+     ],
+     "visibility": "full"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      276.5,
+      495.5,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      276.5,
+      810.1,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    276.5,
+    312.5,
+    771.5,
+    183.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+   }
+  },
+  {
+   "file": "B-no-handler-light",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1800.5,
+    976,
+    394.5
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      114,
+      1836.5,
+      852,
+      144.5
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1830.5,
+    864,
+    156.5
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-no-handler-light-200",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.873,
+   "modal_px": [
+    52,
+    1415.0,
+    976,
+    780.0
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      114,
+      1451.0,
+      852,
+      491.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1445.0,
+    864,
+    503.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-no-handler-light-200-landscape",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    148.4,
+    925,
+    911.6
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      1322,
+      184.4,
+      801,
+      622.6
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    178.4,
+    813,
+    634.6
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-no-handler-dark",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1800.5,
+    976,
+    394.5
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      114,
+      1836.5,
+      852,
+      144.5
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1830.5,
+    864,
+    156.5
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-no-handler-dark-200",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.873,
+   "modal_px": [
+    52,
+    1415.0,
+    976,
+    780.0
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      114,
+      1451.0,
+      852,
+      491.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1445.0,
+    864,
+    503.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-no-handler-dark-200-landscape",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    148.4,
+    925,
+    911.6
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "No app can set wallpaper. Nothing was changed.",
+     "rect_px": [
+      1322,
+      184.4,
+      801,
+      622.6
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    178.4,
+    813,
+    634.6
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-light",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1632.3,
+    976,
+    562.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      114,
+      1668.3,
+      852,
+      312.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1662.3,
+    864,
+    324.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-light-200",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.536,
+   "modal_px": [
+    52,
+    976.2,
+    976,
+    1218.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      114,
+      1012.2,
+      852,
+      929.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1006.2,
+    864,
+    941.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-light-200-landscape",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 929.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-dark",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1632.3,
+    976,
+    562.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      114,
+      1668.3,
+      852,
+      312.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1662.3,
+    864,
+    324.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-dark-200",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.536,
+   "modal_px": [
+    52,
+    976.2,
+    976,
+    1218.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      114,
+      1012.2,
+      852,
+      929.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1006.2,
+    864,
+    941.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-dark-200-landscape",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 929.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-light",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-light-200",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.716,
+   "modal_px": [
+    52,
+    1210.2,
+    976,
+    984.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      114,
+      1246.2,
+      852,
+      695.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1240.2,
+    864,
+    707.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-light-200-landscape",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-dark",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-dark-200",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.716,
+   "modal_px": [
+    52,
+    1210.2,
+    976,
+    984.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      114,
+      1246.2,
+      852,
+      695.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1240.2,
+    864,
+    707.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-dark-200-landscape",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-light-200-landscape-scrolled",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 929.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 246.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "B-unsupported-dark-200-landscape-scrolled",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 929.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 246.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper. The format is not supported or the photo is no longer available. Nothing was changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "unsupported still, or read grant revoked before handoff",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-light-200-landscape-scrolled",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 12.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  },
+  {
+   "file": "C-revoked-dark-200-landscape-scrolled",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 12.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. The photo can't be read right now. The clipboard was not changed.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "changed": "nothing (wallpaper, clipboard and file untouched)",
+    "atlas_owned": true
+   }
+  }
+ ]
+}
