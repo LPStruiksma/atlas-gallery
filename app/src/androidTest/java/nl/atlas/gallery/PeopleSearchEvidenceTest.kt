@@ -4,6 +4,11 @@ import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import androidx.compose.ui.test.hasText
+import org.junit.rules.TestRule
+import org.junit.runners.model.Statement
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import androidx.compose.foundation.Canvas
@@ -71,11 +76,114 @@ import org.junit.runner.RunWith
 class PeopleSearchAppEvidenceTest {
     private val fixtures = SyntheticHeaderFixtures()
     private val compose = createAndroidComposeRule<MainActivity>()
+    // Seed only one synthetic reviewed assignment, before Activity creation.
+    // Delete only that exact row after the Activity closes; never replace a roster.
+    private val reviewedFixture = TestRule { base, description ->
+        object : Statement() {
+            override fun evaluate() {
+                if (description.methodName != "reviewedProfileAndSearchShortcutRecordA10") {
+                    base.evaluate()
+                    return
+                }
+                val context = InstrumentationRegistry.getInstrumentation().targetContext
+                PeopleRepository(context).use { repo ->
+                    check(repo.people().isEmpty()) { "Reviewed fixture requires an empty test roster" }
+                    repo.writableDatabase.insertOrThrow("assignments", null,
+                        android.content.ContentValues().apply {
+                            put("face_id", A10_FIXTURE_ID)
+                            put("person_id", A10_FIXTURE_ID)
+                            put("person_name", A10_FIXTURE_NAME)
+                            put("image_path", A10_FIXTURE_PATH)
+                        })
+                }
+                try {
+                    base.evaluate()
+                } finally {
+                    PeopleRepository(context).use { repo ->
+                        repo.writableDatabase.delete("assignments",
+                            "face_id=? AND person_id=? AND person_name=? AND image_path=?",
+                            arrayOf(A10_FIXTURE_ID.toString(), A10_FIXTURE_ID.toString(),
+                                A10_FIXTURE_NAME, A10_FIXTURE_PATH))
+                    }
+                }
+            }
+        }
+    }
 
     // #584: phone-size renders (Galaxy S24+, 1080×2340).
     @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
         .around(S24DisplayRule())
-        .around(fixtures).around(compose)
+        .around(fixtures).around(reviewedFixture).around(compose)
+
+    @Test fun reviewedProfileAndSearchShortcutRecordA10() {
+        compose.tap(hasTestTag("atlas-nav-people"))
+        val profile = hasTestTag("atlas-people-profile-$A10_FIXTURE_ID")
+        compose.awaitThat("synthetic reviewed profile", 60_000L) {
+            compose.exists(profile, useUnmergedTree = true)
+        }
+        assertReviewedA10(profile, "V4 People profile")
+        compose.tap(hasTestTag("atlas-person-album-back"))
+        compose.tap(hasTestTag("atlas-nav-search"))
+        compose.typeText(hasTestTag("atlas-search-field"), A10_FIXTURE_NAME, KeyboardAfter.Hidden)
+        val shortcut = hasTestTag("atlas-search-person-$A10_FIXTURE_ID")
+        compose.awaitThat("synthetic reviewed search shortcut", 60_000L) {
+            compose.exists(shortcut, useUnmergedTree = true)
+        }
+        assertReviewedA10(shortcut, "PeopleSearchShortcuts")
+        assertPeopleWholeLibraryA11("Imported V4 person header")
+    }
+
+    @Test fun peopleWholeLibraryEntriesRecordA11() {
+        compose.tap(hasTestTag("atlas-nav-people"))
+        waitFor(compose, hasTestTag("atlas-people-home"))
+        assertPeopleWholeLibraryA11("People home")
+
+        compose.tap(hasTestTag("atlas-nav-people"))
+        waitFor(compose, hasTestTag("atlas-people-home"))
+        compose.tap(hasTestTag("atlas-header-more"))
+        waitFor(compose, hasTestTag("atlas-people-hidden-open"))
+        compose.tap(hasTestTag("atlas-people-hidden-open"))
+        waitFor(compose, hasTestTag("atlas-people-hidden"))
+        assertPeopleWholeLibraryA11("Hidden People")
+    }
+
+    private fun assertPeopleWholeLibraryA11(action: String) {
+        compose.tap(hasTestTag("atlas-search-expand"))
+        waitFor(compose, hasTestTag("atlas-search-scope-library"))
+        val before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        waitFor(compose, hasTestTag("atlas-search-field"))
+        waitFor(compose, hasTestTag("atlas-search-overflow"))
+        compose.onNodeWithTag("atlas-person-album-back", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("atlas-person-album-count", useUnmergedTree = true).assertDoesNotExist()
+        compose.awaitThat("$action records exactly one A11 sample", 60_000L) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(action, before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
+    }
+
+    private fun assertReviewedA10(action: SemanticsMatcher, label: String) {
+        val before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+        compose.tap(action)
+        compose.awaitThat("$label opens the correct linked photo album", 60_000L) {
+            compose.exists(hasText(A10_FIXTURE_NAME), useUnmergedTree = true) &&
+                compose.exists(hasTestTag("atlas-person-album-count") and
+                    hasText("1 linked photos and videos"), useUnmergedTree = true)
+        }
+        compose.awaitThat("$label records one A10 sample", 60_000L) {
+            PerformanceSession.aggregate.snapshot("action_a10_ms").count == before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(label, before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
+    }
+
+    private companion object {
+        const val A10_FIXTURE_ID = 9102701L
+        const val A10_FIXTURE_NAME = "Fictional A10 Ada"
+        const val A10_FIXTURE_PATH =
+            "/storage/emulated/0/Pictures/ATLAS-Header-Fixture/IMG_HEADER_FIXTURE_1.png"
+    }
 
     @Test fun peopleIsPlainAndSearchIsOneField() {
         // This is an empty-library evidence render. In particular, the

@@ -21,6 +21,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -30,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import nl.atlas.gallery.featureface.AndroidBitmapFaceFrame
 import nl.atlas.gallery.featureface.FaceBatchStop
 import nl.atlas.gallery.featureface.FaceFrameReader
+import nl.atlas.gallery.featureface.FaceMediaKey
 import nl.atlas.gallery.featureface.FaceSourceSkipped
 import nl.atlas.gallery.featureface.embed.FaceEmbeddingPipeline
 import nl.atlas.gallery.featureface.onnx.OnnxFaceDetector
@@ -39,6 +41,11 @@ import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.runPeopleScanBatch
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewCommand
+import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
+import nl.atlas.gallery.featurevisual.ImageEmbedder
+import nl.atlas.gallery.featurevisual.onnx.SiglipModel
+import nl.atlas.gallery.featurevisual.store.VisualIndexStore
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
@@ -88,6 +95,9 @@ class PeoplePrototypeJourneyTest {
     private val specs = HashMap<Long, SyntheticFace.Spec>()
     @Volatile private var granted = true
     private val stores = mutableListOf<FaceIndexStore>()
+    private var visualStore: VisualIndexStore? = null
+    private var visualFixtureEnabled = false
+    private var importedFixturePath: String? = null
     /** The "Discover faces" choice survives a restart, like the app's preferences. */
     private val optIn = object : PeopleOptInMemory {
         @Volatile var value: PeopleOptIn? = null
@@ -107,12 +117,16 @@ class PeoplePrototypeJourneyTest {
                 PeopleScanWorkRuntime.clear()
                 try {
                     insertFaces()
+                    visualFixtureEnabled = description.methodName == "findSimilarAndFaceSearchRecordNavigationSamples"
+                    if (visualFixtureEnabled) seedImportedFixture()
                     installHost()
                     base.evaluate()
                 } finally {
                     PeopleDiscoveryHost.replaceAppForTest(null)
                     PeopleScanWorkRuntime.clear()
                     stores.forEach { runCatching { it.close() } }
+                    runCatching { visualStore?.close() }
+                    removeImportedFixture()
                     dir.deleteRecursively()
                     inserted.forEach { runCatching { target.contentResolver.delete(it, null, null) } }
                 }
@@ -172,10 +186,38 @@ class PeoplePrototypeJourneyTest {
         }
     }
 
-    /** A fresh host object over the same app-private test database: a process restart. */
-    private fun installHost() {
-        val file = File(dir.apply { mkdirs() }, "faces.db")
-        val context: Context = object : ContextWrapper(target) {
+    // Link exactly one of the invented indexed photos into a separate V4
+    // profile, before MainActivity loads its roster. Never replace a roster.
+    private fun seedImportedFixture() {
+        val uri = inserted.first()
+        val path = requireNotNull(target.contentResolver.query(uri,
+            arrayOf(MediaStore.Images.Media.DATA), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }) { "Synthetic fixture has no MediaStore path" }
+        PeopleRepository(target).use { repo ->
+            check(repo.people().isEmpty()) { "Imported fixture requires an empty test roster" }
+            repo.writableDatabase.insertOrThrow("assignments", null, ContentValues().apply {
+                put("face_id", IMPORTED_ID)
+                put("person_id", IMPORTED_ID)
+                put("person_name", IMPORTED_NAME)
+                put("image_path", path)
+            })
+            importedFixturePath = path
+        }
+    }
+
+    private fun removeImportedFixture() {
+        val path = importedFixturePath ?: return
+        PeopleRepository(target).use { repo ->
+            repo.writableDatabase.delete("assignments",
+                "face_id=? AND person_id=? AND person_name=? AND image_path=?",
+                arrayOf(IMPORTED_ID.toString(), IMPORTED_ID.toString(), IMPORTED_NAME, path))
+        }
+        importedFixturePath = null
+    }
+
+    /** Each fixture store uses its own disposable database file. */
+    private fun databaseContext(file: File): Context = object : ContextWrapper(target) {
             override fun getDatabasePath(name: String): File = file
             override fun openOrCreateDatabase(
                 name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?
@@ -186,9 +228,35 @@ class PeoplePrototypeJourneyTest {
             ): SQLiteDatabase = SQLiteDatabase.openDatabase(
                 file.path, factory, SQLiteDatabase.CREATE_IF_NECESSARY, errorHandler)
         }
-        store = FaceIndexStore(context).also { stores += it }
+
+    /** A fresh host object over the same app-private test database: a process restart. */
+    private fun installHost() {
+        val file = File(dir.apply { mkdirs() }, "faces.db")
+        store = FaceIndexStore(databaseContext(file)).also { stores += it }
+        if (visualFixtureEnabled) {
+            visualStore = VisualIndexStore(databaseContext(File(dir, "visual.db")))
+        }
         host = PeopleDiscoveryHost(
             store = store,
+            visualStore = visualStore,
+            // Only the focused navigation test enables the visual index. Its
+            // vectors are invented, not a claim about similarity/model quality.
+            visualEmbedderFactory = {
+                object : ImageEmbedder {
+                    override val modelVersion = SiglipModel.MODEL_VERSION
+                    override val dimension = SiglipModel.DIMENSION
+                    override fun embed(bitmap: Bitmap): FloatArray =
+                        FloatArray(dimension).also { it[0] = 1f }
+                    override fun close() = Unit
+                }
+            },
+            visualDecoderFor = { directory ->
+                { media ->
+                    val id = Uri.parse(directory.authorizedUri(FaceMediaKey(media.key, media.revision)))
+                        .lastPathSegment?.toLongOrNull()
+                    id?.let { specs[it] }?.let { SyntheticFace.bitmap(it) }
+                }
+            },
             photoGrantCurrent = { granted },
             inferenceFactory = {
                 FaceEmbeddingPipeline.forOnnx(
@@ -281,16 +349,62 @@ class PeoplePrototypeJourneyTest {
         saveUiEvidence("people-39-during-scan.png")
 
         // 4. The person page shows all of the identity's photos.
+        val a10Before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
         compose.tap(hasTestTag("atlas-native-person-album"))
         compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
         compose.awaitThat("person page shows all $PHOTOS photos", WAIT_MS) { fixtureTilesShown() == specs.keys }
+        compose.awaitThat("native People entry records one A10 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a10_ms").count == a10Before + 1
+        }
         compose.awaitScreenStill("prototype-person-page")
+        assertEquals(a10Before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
         saveUiEvidence("prototype-person-page.png")
-        compose.tap(hasTestTag("atlas-header-back"))
+
+        // Enter the actual viewer from the native album, then open its named
+        // person via Details. This exercises AtlasApp's viewerPhotoPeople callback.
+        val fixtureId = fixtureTilesShown().first()
+        val fixtureTile = SemanticsMatcher("synthetic fixture tile") { node ->
+            tileId(node.config.getOrNull(SemanticsProperties.TestTag).orEmpty()) == fixtureId
+        }
+        compose.tap(fixtureTile)
+        compose.waitForNode(hasTestTag("atlas-viewer-details-open"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-viewer-details-open"))
+        compose.waitForNode(hasTestTag("atlas-details-person-1"), WAIT_MS, useUnmergedTree = true)
+        compose.onNodeWithTag("atlas-details-people").performScrollTo()
+        val viewerA10Before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+        compose.tap(hasTestTag("atlas-details-person-1"))
+        compose.awaitThat("viewer person opens the native album", WAIT_MS) {
+            fixtureTilesShown() == specs.keys
+        }
+        compose.awaitThat("viewer person records one A10 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a10_ms").count == viewerA10Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(viewerA10Before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
+
+        // The native Person page's Whole library escape is a non-tab A11 entry.
+        compose.tap(hasTestTag("atlas-search-expand"))
+        compose.waitForNode(hasTestTag("atlas-search-scope-library"), WAIT_MS, useUnmergedTree = true)
+        val scopeA11Before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.awaitThat("native person library scope records one A11 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == scopeA11Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(scopeA11Before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
+        openPeople()
         compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
 
         // 5. Search by the name finds exactly those photos.
+        val a11Before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
         compose.tap(hasTestTag("atlas-nav-search"))
+        compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.awaitThat("bottom Search entry records one A11 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == a11Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(a11Before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
         compose.typeText(hasTestTag("atlas-search-field"), NAME.take(4))
         compose.waitForNode(hasTestTag("atlas-search-person-suggestion"), WAIT_MS, useUnmergedTree = true)
         compose.tap(firstOf(hasTestTag("atlas-search-person-suggestion")))
@@ -329,6 +443,147 @@ class PeoplePrototypeJourneyTest {
         }
         assertNull("no scan session without access", runBlocking { runPeopleScanBatch(target) { false } })
         granted = true
+    }
+
+    /**
+     * Real MainActivity callbacks, using the same disposable indexed person
+     * fixture. The synthetic visual vectors intentionally need not rank distinct
+     * images: the route must reach a terminal Results UI before its scope tap.
+     */
+    @Test fun findSimilarAndFaceSearchRecordNavigationSamples() {
+        openPeople()
+        startDiscovery()
+        val epoch = drainScan()
+        val review = requireNotNull(host.reviewState(epoch))
+        val group = review.clusters.unknownClusters.single()
+        val person = PersonKey("native-" + group.id.anchor.localHex)
+        assertTrue("fixture person named", host.review(PeopleClusterReviewCommand(
+            review, PeopleReviewAction.NameCluster(group.id, person, NAME))))
+        assertTrue("fixture visual index enabled", host.setVisualIndex(true))
+        var batches = 0
+        compose.awaitThat("visual fixtures indexed on the live face epoch", 120_000L) {
+            check(++batches <= 600) { "visual fixture did not drain" }
+            runBlocking { runPeopleScanBatch(target) { false } }
+            val current = liveScanEpoch()
+            current != null &&
+                (host.visualStatus(current)?.done ?: 0) >= PHOTOS
+        }
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
+        openFixtureAlbum()
+        openFixtureViewer()
+        compose.tap(hasTestTag("atlas-viewer-find-similar"))
+        // The index-off Problem screen has no Whole library callback. Await a
+        // real query result (empty is legitimate for duplicate fixture vectors).
+        compose.awaitThat("Find similar reached results", WAIT_MS) {
+            compose.exists(hasTestTag("atlas-visual-search-grid"), useUnmergedTree = true) ||
+                compose.exists(hasTestTag("atlas-visual-search-empty"), useUnmergedTree = true)
+        }
+        assertWholeLibrarySample("Find similar")
+
+        openPeople()
+        openFixtureAlbum()
+        openFixtureFaceSearch()
+        compose.waitForNode(hasTestTag("atlas-face-results-album"), WAIT_MS, useUnmergedTree = true)
+        val before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+        compose.tap(hasTestTag("atlas-face-results-album"))
+        compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
+        compose.awaitThat("Face Search opens the named person's fixtures", WAIT_MS) {
+            fixtureTilesShown() == specs.keys
+        }
+        assertNavigationSample("action_a10_ms", before, "Face Search named album")
+
+        openFixtureFaceSearch()
+        assertWholeLibrarySample("Face Search")
+
+        // Both result routes are also reachable from an imported V4 album.
+        // A global escape must not leave that person filter mounted.
+        openPeople()
+        openImportedFixtureAlbum()
+        openFixtureViewer()
+        compose.tap(hasTestTag("atlas-viewer-find-similar"))
+        compose.awaitThat("Imported Find similar reached results", WAIT_MS) {
+            compose.exists(hasTestTag("atlas-visual-search-grid"), useUnmergedTree = true) ||
+                compose.exists(hasTestTag("atlas-visual-search-empty"), useUnmergedTree = true)
+        }
+        assertWholeLibrarySample("Imported person Find similar")
+
+        openPeople()
+        openImportedFixtureAlbum()
+        openFixtureFaceSearch()
+        assertWholeLibrarySample("Imported person Face Search")
+    }
+
+    private fun openImportedFixtureAlbum() {
+        val profile = hasTestTag("atlas-people-profile-$IMPORTED_ID")
+        compose.waitForNode(profile, WAIT_MS, useUnmergedTree = true)
+        compose.tap(profile)
+        compose.awaitThat("imported person album contains only its linked fixture", WAIT_MS) {
+            compose.exists(hasTestTag("atlas-person-album-count") and
+                hasText("1 linked photos and videos"), useUnmergedTree = true) &&
+                fixtureTilesShown() == setOf(ContentUris.parseId(inserted.first()))
+        }
+    }
+
+    private fun openFixtureAlbum() {
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
+        val before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+        compose.tap(hasTestTag("atlas-native-person-album"))
+        compose.awaitThat("fixture album opened", WAIT_MS) { fixtureTilesShown() == specs.keys }
+        assertNavigationSample("action_a10_ms", before, "fixture album setup")
+    }
+
+    private fun openFixtureViewer() {
+        val fixtureId = fixtureTilesShown().first()
+        compose.tap(SemanticsMatcher("synthetic fixture tile") { node ->
+            tileId(node.config.getOrNull(SemanticsProperties.TestTag).orEmpty()) == fixtureId
+        })
+        compose.waitForNode(hasTestTag("atlas-viewer-details-open"), WAIT_MS, useUnmergedTree = true)
+    }
+
+    private fun openFixtureFaceSearch() {
+        openFixtureViewer()
+        compose.waitForNode(hasTestTag("atlas-viewer-find-person"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-viewer-find-person"))
+        val terminal = listOf("atlas-query-face-confirm", "atlas-query-face-busy",
+            "atlas-query-face-empty", "atlas-query-face-failure", "atlas-query-face-unavailable")
+        // Retry only the explicit busy state, as FaceSearchJourneyTest does.
+        for (attempt in 1..3) {
+            compose.awaitThat("face picker terminal state", WAIT_MS) {
+                terminal.any { compose.exists(hasTestTag(it), useUnmergedTree = true) }
+            }
+            if (compose.exists(hasTestTag("atlas-query-face-confirm"), useUnmergedTree = true)) {
+                compose.tap(hasTestTag("atlas-query-face-confirm") and isEnabled())
+                compose.waitForNode(hasTestTag("atlas-face-results-grid"), WAIT_MS, useUnmergedTree = true)
+                return
+            }
+            check(attempt < 3 && compose.exists(hasTestTag("atlas-query-face-busy"),
+                useUnmergedTree = true)) { "fixture face picker did not reach confirmation" }
+            compose.tap(hasText("Try again"))
+            compose.waitForIdle()
+        }
+        error("fixture face picker exhausted busy retries")
+    }
+
+    private fun assertWholeLibrarySample(action: String) {
+        compose.tap(hasTestTag("atlas-search-expand"))
+        compose.waitForNode(hasTestTag("atlas-search-scope-library"), WAIT_MS, useUnmergedTree = true)
+        val before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-search-overflow"), WAIT_MS, useUnmergedTree = true)
+        listOf("atlas-person-album-back", "atlas-person-album-count",
+            "atlas-visual-search-grid", "atlas-visual-search-empty", "atlas-face-results-grid").forEach {
+            compose.onNodeWithTag(it, useUnmergedTree = true).assertDoesNotExist()
+        }
+        assertNavigationSample("action_a11_ms", before, action)
+    }
+
+    private fun assertNavigationSample(metric: String, before: Int, action: String) {
+        compose.awaitThat("$action records exactly one $metric sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot(metric).count == before + 1
+        }
+        compose.waitForIdle()
+        assertEquals("$action sample delta", before + 1, PerformanceSession.aggregate.snapshot(metric).count)
     }
 
     /**
@@ -462,6 +717,8 @@ class PeoplePrototypeJourneyTest {
         const val PHOTOS = 6
         const val NAME = "Synthetic Ada"
         const val FOLDER = "ATLAS-People-Prototype"
+        const val IMPORTED_ID = 9102702L
+        const val IMPORTED_NAME = "Fictional V4 Bea"
         /** Scans, decodes and MediaStore work run on real time on a slow emulator. */
         const val WAIT_MS = 60_000L
     }

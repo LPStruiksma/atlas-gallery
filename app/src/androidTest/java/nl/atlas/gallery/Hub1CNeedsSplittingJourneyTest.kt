@@ -13,6 +13,8 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -35,6 +37,8 @@ import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepeopleui.PersonPageTarget
 import nl.atlas.gallery.featurepeopleui.needsSplittingLists
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.typeText
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
@@ -99,7 +103,7 @@ class Hub1CNeedsSplittingJourneyTest {
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule()).around(S24DisplayRule())
         .around(setup).around(compose)
 
     private fun insertFaces() {
@@ -188,8 +192,7 @@ class Hub1CNeedsSplittingJourneyTest {
         compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText("Unnamed group"), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-visible-list.png")
-        compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        openPersonAndAssertSample("atlas-needs-splitting-row", "Add name", "unnamed split row")
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
         // Back from the group returns to the visible list, not to People.
         compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
@@ -215,8 +218,7 @@ class Hub1CNeedsSplittingJourneyTest {
         openPeopleMenuItem("Needs splitting (1)", evidence = "hub1c-journey-people-menu.png")
         compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
-        compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        openPersonAndAssertSample("atlas-needs-splitting-row", NAME, "named split row")
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
         compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
@@ -240,12 +242,14 @@ class Hub1CNeedsSplittingJourneyTest {
         compose.waitForNode(hasTestTag("atlas-people-hidden"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText("Needs splitting (1)"), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-hidden-filter.png")
+        openPersonAndAssertSample("atlas-people-hidden-person", NAME, "Hidden People direct row")
+        dismissWithBack(compose, hasTestTag("atlas-person-page"))
+        compose.waitForNode(hasTestTag("atlas-people-hidden"), WAIT_MS, useUnmergedTree = true)
         compose.tap(hasTestTag("atlas-hidden-needs-splitting-open"))
         compose.waitForNode(hasTestTag("atlas-hidden-needs-splitting"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-hidden-list.png")
-        compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        openPersonAndAssertSample("atlas-needs-splitting-row", NAME, "hidden named split row")
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
         // Back returns to Hidden's marked filter, which revalidates.
         compose.waitForNode(hasTestTag("atlas-hidden-needs-splitting"), WAIT_MS, useUnmergedTree = true)
@@ -267,6 +271,35 @@ class Hub1CNeedsSplittingJourneyTest {
         openPeopleMenuItem("Needs splitting (1)")
         compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
         compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
+
+        // Rename from the actual album page: MainActivity's onRetarget must
+        // start a fresh A10 even while a person destination is already open.
+        openPersonAndAssertSample("atlas-needs-splitting-row", NAME, "reopened named split row")
+        compose.tap(hasTestTag("atlas-person-name"))
+        compose.waitForNode(hasTestTag("atlas-person-name-field"), WAIT_MS, useUnmergedTree = true)
+        compose.onNodeWithTag("atlas-person-name-field").performTextClearance()
+        compose.typeText(hasTestTag("atlas-person-name-field"), "Fictional Bea")
+        val beforeRetarget = a10Count()
+        compose.tap(hasTestTag("atlas-person-name-save"))
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText("Fictional Bea"), WAIT_MS, useUnmergedTree = true)
+        assertA10(beforeRetarget, "native album retarget after rename")
+    }
+
+    private fun a10Count() = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+
+    private fun openPersonAndAssertSample(tag: String, destination: String, action: String) {
+        val before = a10Count()
+        compose.tap(hasTestTag(tag))
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(destination), WAIT_MS, useUnmergedTree = true)
+        assertA10(before, action)
+    }
+
+    private fun assertA10(before: Int, action: String) {
+        compose.awaitThat("$action records one A10 sample", WAIT_MS) { a10Count() == before + 1 }
+        compose.waitForIdle()
+        assertEquals(action, before + 1, a10Count())
     }
 
     private fun openPeopleMenuItem(label: String, evidence: String? = null) {

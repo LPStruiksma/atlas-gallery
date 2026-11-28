@@ -20,9 +20,12 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.testkit.KeyboardRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -42,7 +45,7 @@ class CompactHeaderJourneyTest {
     private val compose = createAndroidComposeRule<MainActivity>()
 
     // #645: evidence at the owner's S24+ size (1080x2340).
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule()).around(S24DisplayRule())
         .around(fixtures).around(compose)
 
     /** Plain landing screenshots; no header-shape assertion, so it also documents the old UI. */
@@ -126,6 +129,98 @@ class CompactHeaderJourneyTest {
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-search-field"))
+    }
+
+    @Test fun albumWholeLibraryEntriesRecordA11() {
+        awaitInitialPhotosForA11()
+        openAlbumsForA11()
+        assertWholeLibraryA11("Albums home")
+
+        openAlbumsForA11()
+        openPopup("atlas-header-more", "atlas-albums-menu-hide")
+        compose.tap(hasTestTag("atlas-albums-menu-hide"))
+        waitFor(hasTestTag("atlas-hide-albums-grid"))
+        waitFor(hasText("ATLAS-Header-Fixture", substring = true))
+        assertWholeLibraryA11("Hidden Albums management")
+
+        openFixtureAlbumForA11()
+        assertWholeLibraryA11("shared folder header")
+    }
+
+    @Test fun declutterWholeLibraryRecordsA11AfterConfirmation() {
+        awaitInitialPhotosForA11()
+        openFixtureAlbumForA11()
+        openPopup("atlas-header-more", "atlas-open-declutter")
+        compose.tap(hasTestTag("atlas-open-declutter"))
+        waitFor(hasTestTag("atlas-declutter-card"))
+        compose.tap(hasTestTag("atlas-declutter-discard"))
+        openWholeLibraryScope()
+        val before = a11Count()
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        waitFor(hasTestTag("atlas-declutter-leave-dialog"))
+        compose.waitForIdle()
+        assertEquals("scope choice alone must not record A11 while confirmation is open",
+            before, a11Count())
+        compose.tap(hasTestTag("atlas-declutter-leave-search"))
+        awaitA11(before, "Declutter confirmed Whole library")
+    }
+
+    private fun awaitInitialPhotosForA11() {
+        // Unlike the older header journey, the new A11 tests were tapping
+        // immediately after launch. Require the published Photos landing and
+        // a focused, settled window after the S24 display override.
+        waitFor(hasTestTag("atlas-nav-photos"))
+        waitFor(hasText("photos & videos", substring = true))
+        compose.awaitWindowSettled()
+    }
+
+    private fun openAlbumsForA11() {
+        val albumsTitle = hasTestTag("atlas-header-title") and hasText("Albums")
+        val albumsGrid = hasTestTag("atlas-album-grid")
+        compose.tap(hasTestTag("atlas-nav-albums"), timeoutMs = 60_000L) {
+            compose.exists(albumsTitle) && compose.exists(albumsGrid)
+        }
+        waitFor(hasTestTag("atlas-album-card") and
+            hasText("ATLAS-Header-Fixture", substring = true))
+        compose.awaitWindowSettled()
+    }
+
+    private fun openFixtureAlbumForA11() {
+        openAlbumsForA11()
+        val card = hasTestTag("atlas-album-card") and
+            hasText("ATLAS-Header-Fixture", substring = true)
+        val title = hasTestTag("atlas-header-title") and hasText("ATLAS-Header-Fixture")
+        // A single real pointer tap must leave the Albums grid. If it does not,
+        // the kit reports the pointer coordinates and what was under them.
+        compose.tap(card, timeoutMs = 60_000L) {
+            compose.exists(title) && !compose.exists(hasTestTag("atlas-album-grid"))
+        }
+        // Album publication must settle before opening the menu or search.
+        waitFor(hasText("6 items"))
+    }
+
+    private fun openWholeLibraryScope() {
+        compose.tap(hasTestTag("atlas-search-expand"))
+        compose.waitForNode(hasTestTag("atlas-search-scope-library"), 60_000L,
+            useUnmergedTree = true)
+    }
+
+    private fun a11Count() = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+
+    private fun assertWholeLibraryA11(action: String) {
+        openWholeLibraryScope()
+        val before = a11Count()
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        awaitA11(before, action)
+    }
+
+    private fun awaitA11(before: Int, action: String) {
+        compose.waitForNode(hasTestTag("atlas-search-field"), 60_000L)
+        compose.awaitThat("$action records one A11 sample", 60_000L) {
+            a11Count() == before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(action, before + 1, a11Count())
     }
 
     private fun assertSlimHeader() {

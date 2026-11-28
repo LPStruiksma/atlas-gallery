@@ -282,10 +282,49 @@ internal fun <T : Any> StateFlow<T>.collectAsIdentityState(): State<T> {
     val state = remember(flow) {
         mutableStateOf(flow.value, referentialEqualityPolicy())
     }
+
     LaunchedEffect(flow) {
         flow.collect { next -> state.value = next }
     }
     return state
+}
+
+/** Anonymous monotonic origins shared by every real A10/A11 navigation callback. */
+internal class NavigationActionTimers {
+    var personStartNs by mutableLongStateOf(0L)
+    var searchStartNs by mutableLongStateOf(0L)
+
+    fun startPerson(nowNs: Long = android.os.SystemClock.elapsedRealtimeNanos()) {
+        personStartNs = nowNs
+    }
+
+    fun startSearch(nowNs: Long = android.os.SystemClock.elapsedRealtimeNanos()) {
+        searchStartNs = nowNs
+    }
+}
+
+@Composable
+internal fun NavigationActionSampleEffect(
+    timers: NavigationActionTimers,
+    personVisible: Boolean,
+    searchVisible: Boolean,
+    blocked: Boolean = false
+) {
+    LaunchedEffect(personVisible, searchVisible, blocked, timers.personStartNs, timers.searchStartNs) {
+        if (blocked) return@LaunchedEffect
+        if (personVisible && timers.personStartNs > 0L) {
+            val started = timers.personStartNs
+            withFrameNanos { }
+            PerformanceSession.recordActionElapsedNs(10, started)
+            timers.personStartNs = 0L
+        }
+        if (searchVisible && timers.searchStartNs > 0L) {
+            val started = timers.searchStartNs
+            withFrameNanos { }
+            PerformanceSession.recordActionElapsedNs(11, started)
+            timers.searchStartNs = 0L
+        }
+    }
 }
 
 internal enum class PeopleCsvMode { IMPORT_ONCE, LINK_LIVE }
@@ -1381,7 +1420,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // Only monotonic start ticks are retained, never query text or identities.
     var peopleTabStartNs by remember { mutableLongStateOf(0L) }
-    var searchTabStartNs by remember { mutableLongStateOf(0L) }
+    val navigationActionTimers = remember { NavigationActionTimers() }
     var statusOpen by rememberSaveable { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = statusOpen) { statusOpen = false }
@@ -1735,7 +1774,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Never restore an old selected Person into a newly confirmed roster.
     // In-memory per-roster state intentionally does not survive process death.
     var personFilter by remember(peopleGeneration) { mutableStateOf<Long?>(null) }
-    var personEntryStartNs by remember { mutableLongStateOf(0L) }
     var personBwFolderOnly by remember(peopleGeneration) { mutableStateOf(false) }
     // These are immutable gallery generations, NOT value-equal collections.
     // A newly refreshed but equal-content list must replace its predecessor
@@ -1788,28 +1826,22 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         usageLifecycle.lifecycle.addObserver(observer)
         onDispose { usageLifecycle.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(tab, peopleTabStartNs, searchTabStartNs, settingsOpen, viewerUri) {
+    LaunchedEffect(tab, peopleTabStartNs, settingsOpen, viewerUri) {
         if (!settingsOpen && viewerUri == null) {
-            val started = when (tab) {
-                2 -> peopleTabStartNs
-                3 -> searchTabStartNs
-                else -> 0L
-            }
+            val started = if (tab == 2) peopleTabStartNs else 0L
             if (started > 0L) {
                 withFrameNanos { }
-                PerformanceSession.recordActionElapsedNs(if (tab == 2) 9 else 11, started)
-                if (tab == 2) peopleTabStartNs = 0L else searchTabStartNs = 0L
+                PerformanceSession.recordActionElapsedNs(9, started)
+                peopleTabStartNs = 0L
             }
         }
     }
-    LaunchedEffect(personFilter, personEntryStartNs, viewerUri) {
-        val started = personEntryStartNs
-        if (personFilter != null && viewerUri == null && started > 0L) {
-            withFrameNanos { }
-            PerformanceSession.recordActionElapsedNs(10, started)
-            personEntryStartNs = 0L
-        }
-    }
+    NavigationActionSampleEffect(
+        navigationActionTimers,
+        personVisible = personFilter != null || nativePersonAlbum != null,
+        searchVisible = tab == 3 && personFilter == null,
+        blocked = settingsOpen || viewerUri != null
+    )
     LaunchedEffect(viewerUri, viewerReturnStartNs) {
         val started = viewerReturnStartNs
         if (viewerUri == null && started > 0L && grants.hasAny) {
@@ -3314,6 +3346,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 onSearchWholeLibrary = {
                     // Leave the transient review route without submitting Trash.
                     // The global Search destination starts with its own query.
+                    navigationActionTimers.startSearch()
                     closeDeclutter()
                     overviewQuery = ""
                     overviewScope = AtlasSearchScope.LIBRARY
@@ -3568,6 +3601,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             // #553: People in swipe-up Details; a tap opens that person.
             photoPeople = remember(discoveryHost) {
                 viewerPhotoPeople(discoveryHost, { latestSearchGrant.value }) { person ->
+                    navigationActionTimers.startPerson()
                     closeViewer()
                     tab = 2
                     personFilter = null
@@ -3596,6 +3630,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
       }
         return
+    }
+
+    // Explicit Whole library navigation is not Back to the result origin.
+    // Match the primary Search destination's unfiltered route state.
+    fun openWholeLibraryFromResults() {
+        statusOpen = false
+        settingsOpen = false
+        storiesOpen = false
+        storyPlayback.position = null
+        photoDnaOpen = false
+        hideAlbumsOpen = false
+        personFilter = null
+        nativePersonAlbum = null
+        hiddenPeopleOpen = false
+        needsSplittingOpen = false
+        hiddenNeedsSplittingOpen = false
+        album = null
+        albumVolume = null
+        albumReturnToAlbums = false
+        overviewQuery = ""
+        overviewScope = AtlasSearchScope.LIBRARY
+        tab = 3
     }
 
     val pendingSimilarReturn = similarReturn
@@ -3634,7 +3690,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 closeFindSimilar()
             },
             facetPeople = people,
-            onSearchWholeLibrary = { closeFindSimilar(); tab = 3 },
+            onSearchWholeLibrary = {
+                navigationActionTimers.startSearch()
+                closeFindSimilar()
+                openWholeLibraryFromResults()
+            },
             thumbnail = { record ->
                 withContext(Dispatchers.IO) {
                     AppFindSimilarPort.thumbnail(context, record.uri)?.asImageBitmap()
@@ -3662,6 +3722,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
             },
             onOpenAlbum = { person, name ->
+                navigationActionTimers.startPerson()
                 closeFaceSearch()
                 tab = 2
                 personFilter = null
@@ -3682,7 +3743,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 if (origin != null && origin.first === visible) openViewer(origin.first, origin.second)
             },
             facetPeople = people,
-            onSearchWholeLibrary = { closeFaceSearch(); tab = 3 }
+            onSearchWholeLibrary = {
+                navigationActionTimers.startSearch()
+                closeFaceSearch()
+                openWholeLibraryFromResults()
+            }
         )
         return
     }
@@ -3796,7 +3861,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     val entryNs = android.os.SystemClock.elapsedRealtimeNanos()
                     UsageRecorder.count(UsageAction.A15)
                     if (destination == AtlasDestination.PEOPLE) peopleTabStartNs = entryNs
-                    if (destination == AtlasDestination.SEARCH) searchTabStartNs = entryNs
+                    if (destination == AtlasDestination.SEARCH) navigationActionTimers.startSearch(entryNs)
                     // A primary-tab tap always opens that tab's unfiltered entry point.
                     tab = when (destination) {
                         AtlasDestination.PHOTOS -> 0
@@ -3981,6 +4046,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 if (requested == AtlasSearchScope.LIBRARY) {
                                     // A folder/person header cannot silently turn into a library viewer.
                                     // The existing Search tab owns library-wide facets and suggestions.
+                                    navigationActionTimers.startSearch()
                                     personFilter = null
                                     album = null
                                     albumVolume = null
@@ -4469,7 +4535,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             hidden = hiddenAlbums,
                             onToggle = ::toggleHiddenAlbum,
                             onClose = { hideAlbumsOpen = false },
-                            onSearchWholeLibrary = { hideAlbumsOpen = false; tab = 3 },
+                            onSearchWholeLibrary = {
+                                navigationActionTimers.startSearch()
+                                hideAlbumsOpen = false
+                                tab = 3
+                            },
                             coverRenderer = { record, modifier ->
                                 MediaPreview(record, modifier, ContentScale.Crop, 512)
                             }
@@ -4548,7 +4618,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onOpenStories = { storiesOpen = true },
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
-                            onSearchWholeLibrary = { tab = 3 },
+                            onSearchWholeLibrary = {
+                                navigationActionTimers.startSearch()
+                                tab = 3
+                            },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
                                 albumVolume = route.volumeName
@@ -4670,7 +4743,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             // Reuse the existing Person album, B&W folder filter,
                             // original media ordering and filmstrip viewer.
                             personBwFolderOnly = false
-                            personEntryStartNs = android.os.SystemClock.elapsedRealtimeNanos()
+                            navigationActionTimers.startPerson()
                             personFilter = selectedPerson
                         }
                         // #644: at rest Search shows only the field, recents and
@@ -4718,9 +4791,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 onBack = { nativePersonAlbum = null },
                                 onOpen = { items, record -> openViewer(items, record.uri) },
                                 facetPeople = people,
-                                onSearchWholeLibrary = { nativePersonAlbum = null; tab = 3 },
+                                onSearchWholeLibrary = {
+                                    navigationActionTimers.startSearch()
+                                    nativePersonAlbum = null
+                                    tab = 3
+                                },
                                 // #551: a merge or first name follows the surviving person.
-                                onRetarget = { nativePersonAlbum = it }
+                                onRetarget = {
+                                    navigationActionTimers.startPerson()
+                                    nativePersonAlbum = it
+                                }
                             )
                         } else if (needsSplittingOpen || hiddenNeedsSplittingOpen) {
                             val hiddenOnly = hiddenNeedsSplittingOpen
@@ -4745,11 +4825,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                         authorized.any { it.target == target }) {
                                         when (target) {
                                             is PersonPageTarget.Named -> live.names[target.person]?.let {
+                                                navigationActionTimers.startPerson()
                                                 nativePersonAlbum = NativePersonAlbumRequest(target, it)
                                             }
-                                            is PersonPageTarget.Unnamed ->
+                                            is PersonPageTarget.Unnamed -> {
+                                                navigationActionTimers.startPerson()
                                                 nativePersonAlbum = NativePersonAlbumRequest(
                                                     target, "Unnamed group")
+                                            }
                                         }
                                     }
                                     // #212 v3: keep the filtered list underneath the
@@ -4764,8 +4847,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 host = discoveryHost,
                                 people = discovery.status?.people,
                                 onBack = { hiddenPeopleOpen = false },
-                                onOpen = { nativePersonAlbum = it },
-                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 },
+                                onOpen = {
+                                    navigationActionTimers.startPerson()
+                                    nativePersonAlbum = it
+                                },
+                                onSearchWholeLibrary = {
+                                    navigationActionTimers.startSearch()
+                                    hiddenPeopleOpen = false
+                                    tab = 3
+                                },
                                 onOpenNeedsSplitting = { hiddenNeedsSplittingOpen = true }
                             )
                         } else if (people.isNotEmpty() && permittedCovers == null) {
@@ -4832,7 +4922,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     discoveryHost.discoveryOptedIn(), discovery.status),
                                 onOpenProfile = { id ->
                                     personBwFolderOnly = false
-                                    personEntryStartNs = android.os.SystemClock.elapsedRealtimeNanos()
+                                    navigationActionTimers.startPerson()
                                     personFilter = id
                                 },
                                 // The host's own single-use face epoch, never the gallery
@@ -4851,6 +4941,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     discovery.status?.people?.sourceGeneration,
                                 onOpenNativePersonAlbum = { person ->
                                     discovery.status?.people?.people?.get(person)?.name?.let { name ->
+                                        navigationActionTimers.startPerson()
                                         nativePersonAlbum = NativePersonAlbumRequest(person, name)
                                     }
                                 },
@@ -4859,7 +4950,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 },
                                 menuItems = peopleMenu,
                                 onOpenLibraryStatus = { settingsOpen = true },
-                                onSearchWholeLibrary = { tab = 3 },
+                                onSearchWholeLibrary = {
+                                    navigationActionTimers.startSearch()
+                                    tab = 3
+                                },
                                 portrait = { profile ->
                                     val record = profile.coverUri?.let {
                                         permittedCovers?.authorizedCoversByUri?.get(it)
