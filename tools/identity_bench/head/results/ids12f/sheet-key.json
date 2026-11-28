@@ -1,0 +1,86 @@
+{
+ "blind_seed": 1091,
+ "note": "Keep away from the judges until both have voted.",
+ "pairs": {
+  "f01": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f02": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f03": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f04": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f05": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f06": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f07": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f08": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f09": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f10": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f11": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f12": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f13": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f14": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f15": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f16": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f17": {
+   "A": "baseline",
+   "B": "candidate"
+  },
+  "f18": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f19": {
+   "A": "candidate",
+   "B": "baseline"
+  },
+  "f20": {
+   "A": "baseline",
+   "B": "candidate"
+  }
+ }
+}

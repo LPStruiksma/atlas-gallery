@@ -43,6 +43,20 @@ The baseline needs the identity bench's weights too (`ghost_1_256`, `crossface_g
 
     python3 -m unittest tools/identity_bench/head/test_run_cohort.py -v   # standard library only
 
+### What the first run measured (2026-11-28, cohort frozen in commit 45986ac before any pair ran)
+
+Host: 4-core cloud CPU, no GPU; about 12 minutes per candidate pair, 3 h 59 min of candidate wall time for 20 pairs (`results/ids12f/run-log.json`). Every output kept every pixel outside its fence byte-identical. Automatic gates only; the two-judge votes and the final verdict belong to the follow-up unit.
+
+| Gate (frozen IDS-12A) | Result |
+|---|---|
+| Whole head and target pose (90 %) | **FAIL**, 9 of 20 `full_head` with pose kept (6 of 6 frontal pairs, 3 of 14 three-quarter pairs); the other 11 classify `no_swap` |
+| Edit fence | PASS, 20 of 20 bit-identical outside the fence |
+| Scale (median error at most 0.10) | PASS, median 0.056 over 20 |
+| Hair/hairline and neck-seam judges | not measured (follow-up) |
+| Profile-capable identity | insufficient: one profile-capable method (glintr100) per pair, the rubric asks for two |
+
+The face-only baseline (`ghost_1_256+mask-mp`) classifies `face_only` on 9 pairs and `no_swap` on 11. **Read the `no_swap` rows with care.** `probe.classify()` needs the SFace score to the reference to beat the score to the target by 0.15, and SFace is a frontal model. On the 11 three-quarter `no_swap` candidate rows the hair moved to the reference (hair colour distance to the reference below that to the target on 7 of the 8 rows where both are measurable) and glintr100 puts the output closer to the reference than to the target on all 11 (median 0.48 against 0.25), and the sheets show the reference's head. The frozen classifier was not changed after seeing this; whether those rows count is for the verdict unit and its judges, not for this run.
+
 ## Re-running a probe
 
 Needs about 12 GB of free RAM, 10 GB of disk and network access to `huggingface.co`, `us.aws.cdn.hf.co` and `media.githubusercontent.com`. No GPU, no account, no key.

@@ -1,0 +1,2702 @@
+[
+ {
+  "pair_id": "f01",
+  "target_id": "tgt_1",
+  "reference_id": "ref_a",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109100,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f01:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 366524,
+    "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "4c3bf041faaff73e894b3b28f572579bc4074504f6aee5962abc33ec9384b169",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 105.683,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 99.411,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0593,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.568,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.577,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.568,
+   "id_to_target": 0.478,
+   "id_reference_vs_target": 0.386,
+   "yaw": {
+    "target": -0.85,
+    "result": -0.62
+   },
+   "hair_ratio": {
+    "target": 0.52,
+    "reference": 1.71,
+    "result": 0.74
+   },
+   "hair_dE_to_reference": 9.67,
+   "hair_dE_to_target": 35.17,
+   "target_head_unchanged_frac": 0.029,
+   "face_neck_dE": {
+    "target": 12.99,
+    "result": 17.7
+   },
+   "glintr100_to_target": 0.282
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.591,
+    "glintr100_to_reference": 0.604,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f02",
+  "target_id": "tgt_1",
+  "reference_id": "ref_c",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109101,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f02:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": false,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 366524,
+    "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "763346c280b5efd473a6803b1c1b4f03fe3b7cfe03d800fd291533a3eaeaf595",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 105.683,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 99.69,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0567,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.514,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.45,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.514,
+   "id_to_target": 0.377,
+   "id_reference_vs_target": 0.207,
+   "yaw": {
+    "target": -0.85,
+    "result": -0.47
+   },
+   "hair_ratio": {
+    "target": 0.52,
+    "reference": 2.25,
+    "result": 1.56
+   },
+   "hair_dE_to_reference": 4.0,
+   "hair_dE_to_target": 47.59,
+   "target_head_unchanged_frac": 0.002,
+   "face_neck_dE": {
+    "target": 12.99,
+    "result": 16.59
+   },
+   "glintr100_to_target": 0.205
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.471,
+    "glintr100_to_reference": 0.425,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f03",
+  "target_id": "tgt_1",
+  "reference_id": "ref_e",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109102,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f03:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 366524,
+    "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "6955e1cf62651654beaac025798ba7f9137d1c928536e895eb221aa8b561a8ef",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 105.683,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 104.054,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0154,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.436,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.473,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.436,
+   "id_to_target": 0.452,
+   "id_reference_vs_target": 0.314,
+   "yaw": {
+    "target": -0.85,
+    "result": -0.62
+   },
+   "hair_ratio": {
+    "target": 0.52,
+    "reference": 1.4,
+    "result": 0.76
+   },
+   "hair_dE_to_reference": 10.33,
+   "hair_dE_to_target": 45.51,
+   "target_head_unchanged_frac": 0.044,
+   "face_neck_dE": {
+    "target": 12.99,
+    "result": 21.34
+   },
+   "glintr100_to_target": 0.239
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.623,
+    "glintr100_to_reference": 0.56,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f04",
+  "target_id": "tgt_2",
+  "reference_id": "ref_b",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109103,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f04:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 458148,
+    "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "ac4fd07ecc05a0c16aef7de7c7ce44e25c599f834f48702dcb48a6f5f6e7ae84",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 75.565,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 87.621,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.1595,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.767,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.69,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.767,
+   "id_to_target": 0.434,
+   "id_reference_vs_target": 0.412,
+   "yaw": {
+    "target": -0.0,
+    "result": -0.0
+   },
+   "hair_ratio": {
+    "target": 0.85,
+    "reference": 0.0,
+    "result": 0.0
+   },
+   "hair_dE_to_reference": null,
+   "hair_dE_to_target": null,
+   "target_head_unchanged_frac": 0.04,
+   "face_neck_dE": {
+    "target": 19.0,
+    "result": 6.24
+   },
+   "glintr100_to_target": 0.302
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.629,
+    "glintr100_to_reference": 0.599,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f05",
+  "target_id": "tgt_2",
+  "reference_id": "ref_a",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109104,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f05:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 458148,
+    "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "761e71576de76920bec12090077284f90531f742dab9bf0a152525bc6430cf8a",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 75.565,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 71.359,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0557,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.741,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.717,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.741,
+   "id_to_target": 0.411,
+   "id_reference_vs_target": 0.427,
+   "yaw": {
+    "target": -0.0,
+    "result": 0.05
+   },
+   "hair_ratio": {
+    "target": 0.85,
+    "reference": 1.71,
+    "result": 1.11
+   },
+   "hair_dE_to_reference": 16.86,
+   "hair_dE_to_target": 40.56,
+   "target_head_unchanged_frac": 0.056,
+   "face_neck_dE": {
+    "target": 19.0,
+    "result": 14.8
+   },
+   "glintr100_to_target": 0.314
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.681,
+    "glintr100_to_reference": 0.743,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f06",
+  "target_id": "tgt_2",
+  "reference_id": "ref_d",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109105,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f06:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 458148,
+    "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "4622cef1ed8b2c8409681db94bf163e15ca0724037793d7fc958467f4045fda6",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 75.565,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 81.163,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0741,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.625,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.545,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.625,
+   "id_to_target": 0.331,
+   "id_reference_vs_target": 0.386,
+   "yaw": {
+    "target": -0.0,
+    "result": -0.0
+   },
+   "hair_ratio": {
+    "target": 0.85,
+    "reference": 0.42,
+    "result": 0.41
+   },
+   "hair_dE_to_reference": 2.13,
+   "hair_dE_to_target": 4.03,
+   "target_head_unchanged_frac": 0.08,
+   "face_neck_dE": {
+    "target": 19.0,
+    "result": 7.08
+   },
+   "glintr100_to_target": 0.194
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.584,
+    "glintr100_to_reference": 0.656,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f07",
+  "target_id": "tgt_3",
+  "reference_id": "ref_c",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109106,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f07:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 369607,
+    "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "1c4a313c5543f4d579dca904df9a411bee117441171de19c5b22ff45b9ee8ffb",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 96.347,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 93.159,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0331,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.54,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.433,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.54,
+   "id_to_target": 0.285,
+   "id_reference_vs_target": 0.294,
+   "yaw": {
+    "target": 0.75,
+    "result": 0.78
+   },
+   "hair_ratio": {
+    "target": 0.62,
+    "reference": 2.25,
+    "result": 1.58
+   },
+   "hair_dE_to_reference": 5.35,
+   "hair_dE_to_target": 65.06,
+   "target_head_unchanged_frac": 0.015,
+   "face_neck_dE": {
+    "target": 9.38,
+    "result": 10.33
+   },
+   "glintr100_to_target": 0.203
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.427,
+    "glintr100_to_reference": 0.41,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f08",
+  "target_id": "tgt_3",
+  "reference_id": "ref_d",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109107,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f08:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 369607,
+    "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "f2625734c93853b8f7de7b67df9e51a8949ede7ff16395cd8023f61c1873f7a8",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 96.347,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 102.608,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.065,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.493,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.526,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.493,
+   "id_to_target": 0.21,
+   "id_reference_vs_target": 0.196,
+   "yaw": {
+    "target": 0.75,
+    "result": 0.7
+   },
+   "hair_ratio": {
+    "target": 0.62,
+    "reference": 0.42,
+    "result": 0.84
+   },
+   "hair_dE_to_reference": 6.98,
+   "hair_dE_to_target": 61.45,
+   "target_head_unchanged_frac": 0.02,
+   "face_neck_dE": {
+    "target": 9.38,
+    "result": 5.59
+   },
+   "glintr100_to_target": 0.199
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.439,
+    "glintr100_to_reference": 0.371,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f09",
+  "target_id": "tgt_3",
+  "reference_id": "ref_b",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109108,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f09:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 369607,
+    "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "4168c68272379c836dda12769e8e596447bc64d7f7b5ebd42516fed4a567c416",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 96.347,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 106.772,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.1082,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.555,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.544,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.555,
+   "id_to_target": 0.513,
+   "id_reference_vs_target": 0.304,
+   "yaw": {
+    "target": 0.75,
+    "result": 0.72
+   },
+   "hair_ratio": {
+    "target": 0.62,
+    "reference": 0.0,
+    "result": 0.23
+   },
+   "hair_dE_to_reference": null,
+   "hair_dE_to_target": 16.46,
+   "target_head_unchanged_frac": 0.079,
+   "face_neck_dE": {
+    "target": 9.38,
+    "result": 14.19
+   },
+   "glintr100_to_target": 0.383
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.473,
+    "glintr100_to_reference": 0.478,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f10",
+  "target_id": "tgt_4",
+  "reference_id": "ref_a",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109109,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f10:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 328505,
+    "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "f3b326a35b7cd337a79d7be7f1f57cb91ce7ecf043354a299d403f7f018d2a98",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 116.151,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 114.587,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0135,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.509,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.587,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.509,
+   "id_to_target": 0.411,
+   "id_reference_vs_target": 0.337,
+   "yaw": {
+    "target": -0.69,
+    "result": -0.78
+   },
+   "hair_ratio": {
+    "target": 0.82,
+    "reference": 1.71,
+    "result": 0.94
+   },
+   "hair_dE_to_reference": 7.59,
+   "hair_dE_to_target": 38.33,
+   "target_head_unchanged_frac": 0.037,
+   "face_neck_dE": {
+    "target": 14.55,
+    "result": 12.73
+   },
+   "glintr100_to_target": 0.286
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.536,
+    "glintr100_to_reference": 0.534,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f11",
+  "target_id": "tgt_4",
+  "reference_id": "ref_d",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109110,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f11:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 328505,
+    "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "8bbca300a73f7458a36aba0c049f14b09c6b2018b7326c7bdd37fba7f0aa9ebb",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 116.151,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 111.917,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0365,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.491,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.464,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.491,
+   "id_to_target": 0.452,
+   "id_reference_vs_target": 0.28,
+   "yaw": {
+    "target": -0.69,
+    "result": -0.71
+   },
+   "hair_ratio": {
+    "target": 0.82,
+    "reference": 0.42,
+    "result": 0.96
+   },
+   "hair_dE_to_reference": 3.33,
+   "hair_dE_to_target": 2.71,
+   "target_head_unchanged_frac": 0.218,
+   "face_neck_dE": {
+    "target": 14.55,
+    "result": 19.51
+   },
+   "glintr100_to_target": 0.403
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.404,
+    "glintr100_to_reference": 0.292,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f12",
+  "target_id": "tgt_5",
+  "reference_id": "ref_b",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109111,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f12:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 383783,
+    "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "288460fe085bf6b895d4d39bde682389a56b44b5f03fabb10e4e419898ed72f0",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 97.886,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 116.437,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.1895,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.578,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.498,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.578,
+   "id_to_target": 0.452,
+   "id_reference_vs_target": 0.327,
+   "yaw": {
+    "target": -0.63,
+    "result": -0.43
+   },
+   "hair_ratio": {
+    "target": 0.88,
+    "reference": 0.0,
+    "result": 0.19
+   },
+   "hair_dE_to_reference": null,
+   "hair_dE_to_target": 30.81,
+   "target_head_unchanged_frac": 0.017,
+   "face_neck_dE": {
+    "target": 9.87,
+    "result": 16.55
+   },
+   "glintr100_to_target": 0.245
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.509,
+    "glintr100_to_reference": 0.491,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f13",
+  "target_id": "tgt_5",
+  "reference_id": "ref_e",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109112,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f13:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 383783,
+    "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "2a7d8851a751626c2bb4206030e6dddae03697bf0e0ea002126d9107452757f8",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 97.886,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 98.827,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0096,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.557,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.544,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.557,
+   "id_to_target": 0.298,
+   "id_reference_vs_target": 0.4,
+   "yaw": {
+    "target": -0.63,
+    "result": -0.48
+   },
+   "hair_ratio": {
+    "target": 0.88,
+    "reference": 1.4,
+    "result": 1.18
+   },
+   "hair_dE_to_reference": 11.28,
+   "hair_dE_to_target": 18.64,
+   "target_head_unchanged_frac": 0.04,
+   "face_neck_dE": {
+    "target": 9.87,
+    "result": 13.91
+   },
+   "glintr100_to_target": 0.373
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.632,
+    "glintr100_to_reference": 0.463,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f14",
+  "target_id": "tgt_6",
+  "reference_id": "ref_c",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109113,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f14:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 372322,
+    "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "70dcf97e99a6697c0f33b3ab376e9fd04f90cc8a31f12a9dc6e758f820920c01",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 88.265,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 86.876,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0157,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.756,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.722,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.756,
+   "id_to_target": 0.4,
+   "id_reference_vs_target": 0.384,
+   "yaw": {
+    "target": -0.04,
+    "result": -0.04
+   },
+   "hair_ratio": {
+    "target": 0.56,
+    "reference": 2.25,
+    "result": 1.72
+   },
+   "hair_dE_to_reference": 3.08,
+   "hair_dE_to_target": 32.31,
+   "target_head_unchanged_frac": 0.017,
+   "face_neck_dE": {
+    "target": 7.36,
+    "result": 11.23
+   },
+   "glintr100_to_target": 0.311
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.562,
+    "glintr100_to_reference": 0.625,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f15",
+  "target_id": "tgt_6",
+  "reference_id": "ref_d",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109114,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f15:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 372322,
+    "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "bb8f06be96754e99a855a4c758a578232ac56cb8274ddf0a0031e310f3c904c9",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 88.265,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 101.568,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.1507,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.642,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.665,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.642,
+   "id_to_target": 0.379,
+   "id_reference_vs_target": 0.378,
+   "yaw": {
+    "target": -0.04,
+    "result": -0.0
+   },
+   "hair_ratio": {
+    "target": 0.56,
+    "reference": 0.42,
+    "result": 0.45
+   },
+   "hair_dE_to_reference": 5.45,
+   "hair_dE_to_target": 23.92,
+   "target_head_unchanged_frac": 0.088,
+   "face_neck_dE": {
+    "target": 7.36,
+    "result": 9.12
+   },
+   "glintr100_to_target": 0.27
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.648,
+    "glintr100_to_reference": 0.701,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f16",
+  "target_id": "tgt_6",
+  "reference_id": "ref_e",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109115,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "frontal",
+  "baseline_id": "f16:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "full_head",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 372322,
+    "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "0334ecbcd0ac0d8aee40e09172baff3be4a31bd700edb7ff28a122ff689e9a33",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 88.265,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 92.967,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0533,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.724,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.689,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.724,
+   "id_to_target": 0.466,
+   "id_reference_vs_target": 0.427,
+   "yaw": {
+    "target": -0.04,
+    "result": -0.02
+   },
+   "hair_ratio": {
+    "target": 0.56,
+    "reference": 1.4,
+    "result": 0.92
+   },
+   "hair_dE_to_reference": 3.2,
+   "hair_dE_to_target": 28.1,
+   "target_head_unchanged_frac": 0.051,
+   "face_neck_dE": {
+    "target": 7.36,
+    "result": 11.75
+   },
+   "glintr100_to_target": 0.324
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.741,
+    "glintr100_to_reference": 0.718,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f17",
+  "target_id": "tgt_7",
+  "reference_id": "ref_a",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109116,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f17:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 316570,
+    "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "fa6e37e41a20918ca6cc0c1d247cb4832575cb1f5adc8ed4be529a568edeb9f1",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 117.99,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 120.943,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.025,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.407,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.488,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.407,
+   "id_to_target": 0.406,
+   "id_reference_vs_target": 0.305,
+   "yaw": {
+    "target": 0.82,
+    "result": 0.98
+   },
+   "hair_ratio": {
+    "target": 0.59,
+    "reference": 1.71,
+    "result": 0.82
+   },
+   "hair_dE_to_reference": 1.18,
+   "hair_dE_to_target": 30.55,
+   "target_head_unchanged_frac": 0.051,
+   "face_neck_dE": {
+    "target": 22.94,
+    "result": 15.86
+   },
+   "glintr100_to_target": 0.255
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.589,
+    "glintr100_to_reference": 0.544,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f18",
+  "target_id": "tgt_7",
+  "reference_id": "ref_c",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109117,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f18:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 316570,
+    "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "18f1368951dcf09d81184ce50ea165fafe067292cd5f244e5eabb5d22146f028",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 117.99,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 111.579,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0543,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.487,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.288,
+     "outcome": "not_preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.487,
+   "id_to_target": 0.42,
+   "id_reference_vs_target": 0.315,
+   "yaw": {
+    "target": 0.82,
+    "result": 1.03
+   },
+   "hair_ratio": {
+    "target": 0.59,
+    "reference": 2.25,
+    "result": 1.22
+   },
+   "hair_dE_to_reference": 2.91,
+   "hair_dE_to_target": 4.12,
+   "target_head_unchanged_frac": 0.204,
+   "face_neck_dE": {
+    "target": 22.94,
+    "result": null
+   },
+   "glintr100_to_target": 0.244
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.503,
+    "glintr100_to_reference": 0.335,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f19",
+  "target_id": "tgt_8",
+  "reference_id": "ref_b",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109118,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f19:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": false,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 398360,
+    "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "27319ead80781d76b714001efb830678233eb736213f6bf7e524a721bea8c591",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 106.593,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 113.911,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0687,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.504,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.48,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.504,
+   "id_to_target": 0.382,
+   "id_reference_vs_target": 0.139,
+   "yaw": {
+    "target": 0.81,
+    "result": 0.47
+   },
+   "hair_ratio": {
+    "target": 1.77,
+    "reference": 0.0,
+    "result": 0.21
+   },
+   "hair_dE_to_reference": null,
+   "hair_dE_to_target": 7.49,
+   "target_head_unchanged_frac": 0.017,
+   "face_neck_dE": {
+    "target": null,
+    "result": 20.28
+   },
+   "glintr100_to_target": 0.199
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "no_swap",
+    "sface_to_reference": 0.4,
+    "glintr100_to_reference": 0.238,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ },
+ {
+  "pair_id": "f20",
+  "target_id": "tgt_8",
+  "reference_id": "ref_e",
+  "engine": "klein4b-Q4_0-headlora",
+  "seed": 109119,
+  "model_sha256": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+  "adapter_sha256": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+  "pose_tag": "three_quarter",
+  "baseline_id": "f20:ghost_1_256+mask-mp",
+  "licence_evidence": {
+   "status": "measured",
+   "value": {
+    "cleared": true,
+    "source": "synthetic: generated at run time by run_cohort.py from the frozen prompt and seed (FLUX.2 klein 4B, Apache-2.0)",
+    "licence": "synthetic image, no person depicted; generator weights Apache-2.0",
+    "permitted_use": "benchmark fixture for the ATLAS identity bench; not shipped"
+   },
+   "method": "frozen cohort licence; fixture bytes match cohort.json people[].sha256"
+  },
+  "claimed_success": {
+   "status": "measured",
+   "value": false,
+   "method": "bench run: nothing is labelled or surfaced to a user as a whole-head success"
+  },
+  "hair_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "seam_votes": {
+   "status": "not_measured",
+   "reason": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  },
+  "classification": {
+   "status": "measured",
+   "value": "no_swap",
+   "method": "probe.classify on the fenced output (IDS-3 taxonomy)"
+  },
+  "target_pose_preserved": {
+   "status": "measured",
+   "value": true,
+   "method": "probe.pose_kept: landmark yaw proxy within 0.3"
+  },
+  "outside_fence": {
+   "status": "measured",
+   "value": {
+    "equal": true,
+    "outside_pixels": 398360,
+    "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+   },
+   "method": "quality.check_outside_fence on packed BGR pixels and the frozen fence"
+  },
+  "output_mask_hash": {
+   "status": "measured",
+   "value": "f892a38bb545c9d989f14f3bbe4a327a20d284b799da8a9179e670c24c6e53ca",
+   "method": "SHA-256 of the uint8 paste mask (edit mask AND fence)"
+  },
+  "target_head_span": {
+   "status": "measured",
+   "value": 106.593,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "result_head_span": {
+   "status": "measured",
+   "value": 96.737,
+   "method": "head span = distance from the eye midpoint to the mouth-corner midpoint (YuNet landmarks), the same definition on target and result"
+  },
+  "head_scale_rel_error": {
+   "status": "measured",
+   "value": 0.0925,
+   "method": "abs(result - target) / target head span"
+  },
+  "identity": {
+   "status": "measured",
+   "value": [
+    {
+     "source": "sface",
+     "profile_capable": false,
+     "threshold": 0.363,
+     "cosine_to_reference": 0.493,
+     "outcome": "preserved"
+    },
+    {
+     "source": "glintr100",
+     "profile_capable": true,
+     "threshold": 0.4,
+     "cosine_to_reference": 0.463,
+     "outcome": "preserved"
+    }
+   ],
+   "method": "two scoring methods, cosine to the reference fixture"
+  },
+  "model_file_sha256": {
+   "status": "measured",
+   "value": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "adapter_file_sha256": {
+   "status": "measured",
+   "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
+   "method": "SHA-256 of the file loaded at run time"
+  },
+  "scores": {
+   "id_to_reference": 0.493,
+   "id_to_target": 0.429,
+   "id_reference_vs_target": 0.301,
+   "yaw": {
+    "target": 0.81,
+    "result": 0.54
+   },
+   "hair_ratio": {
+    "target": 1.77,
+    "reference": 1.4,
+    "result": 1.0
+   },
+   "hair_dE_to_reference": 13.09,
+   "hair_dE_to_target": 51.39,
+   "target_head_unchanged_frac": 0.017,
+   "face_neck_dE": {
+    "target": null,
+    "result": 21.6
+   },
+   "glintr100_to_target": 0.21
+  },
+  "baseline": {
+   "status": "measured",
+   "value": {
+    "classification": "face_only",
+    "sface_to_reference": 0.54,
+    "glintr100_to_reference": 0.372,
+    "outside_fence_equal": true
+   },
+   "method": "ghost_1_256+mask-mp through the same measurements"
+  }
+ }
+]
