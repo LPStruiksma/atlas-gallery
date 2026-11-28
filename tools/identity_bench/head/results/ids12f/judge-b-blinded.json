@@ -1,0 +1,38 @@
+{
+  "schema": "ids12f-judge-raw-v1",
+  "issue": "LPStruiksma/atlas-gallery#1134",
+  "judge": {"id": "judge-b", "actor": "claude/dev", "family": "Anthropic Claude", "session": "session_01JsoPf3LEGiSht7DrwHj5Wg"},
+  "inputs_pinned_commit": "6e1829943e24767b2eb0c2cb0215bf848e861f29",
+  "presentation_order": "as shown on each sheet (columns labelled A and B); not decoded",
+  "attestation": {
+    "sheets_viewed": ["f01","f02","f03","f04","f05","f06","f07","f08","f09","f10","f11","f12","f13","f14","f15","f16","f17","f18","f19","f20"],
+    "each_viewed_individually": true,
+    "key_viewed_before_commit": false,
+    "first_judge_record_viewed_before_commit": false,
+    "other_inputs_read": ["HEAD_ACCEPTANCE.md", "sheets/votes-template.csv"],
+    "note": "Viewed at the committed 1280px sheet resolution; preferences are visual judgements only, no identity inference."
+  },
+  "abstentions": [],
+  "votes": [
+    {"sheet_id": "f01", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f02", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f03", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f04", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f05", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f06", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f07", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f08", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f09", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f10", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f11", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f12", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f13", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f14", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f15", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f16", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f17", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}},
+    {"sheet_id": "f18", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f19", "hair_hairline": {"prefers": "A"}, "neck_seam": {"prefers": "A"}},
+    {"sheet_id": "f20", "hair_hairline": {"prefers": "B"}, "neck_seam": {"prefers": "B"}}
+  ]
+}
