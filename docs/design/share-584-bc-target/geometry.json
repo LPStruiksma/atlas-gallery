@@ -1,6 +1,6 @@
 {
- "schema": 1,
- "version": "SHARE-1BC-E (#1118)",
+ "schema": 2,
+ "version": "SHARE-1BC-E2 (#1128)",
  "source": "synthetic coordinates from bc_frames.py; not S24+ runtime measurement",
  "density_px_per_dp": 2.8125,
  "min_hit_px": 135,
@@ -16,6 +16,2240 @@
   "#9AA0B8",
   "#F2F3F8",
   "#FFFFFF"
+ ],
+ "menu_limits_rule": {
+  "vertical_margin_dp": 48,
+  "vertical_margin_from": "safe window (insets counted once)",
+  "horizontal_min_gap_dp": 8,
+  "horizontal_containment": "safe window",
+  "width_dp": [
+   112,
+   280
+  ],
+  "min_row_dp": 48
+ },
+ "access_modes": {
+  "LIBRARY": {
+   "details": true,
+   "back": "Back to gallery",
+   "host_actions": true
+  },
+  "EXTERNAL": {
+   "details": true,
+   "back": "Back",
+   "host_actions": false
+  },
+  "SECURE": {
+   "details": false,
+   "back": "Back to camera",
+   "host_actions": false
+  }
+ },
+ "eligibility_matrix": [
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [
+    "ai-edit",
+    "swap-person"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "ai-edit",
+    "set-wallpaper"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [
+    "ai-edit"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "set-wallpaper"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "set-wallpaper"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "copy-image"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "swap-person"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "ai-edit",
+    "swap-person"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "ai-edit",
+    "swap-person"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [
+    "ai-edit",
+    "swap-person"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [
+    "ai-edit"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [
+    "ai-edit"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [
+    "ai-edit"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [
+    "ai-edit"
+   ],
+   "more": true
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "LIBRARY",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "EXTERNAL",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "still",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": true,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": true,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": true,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": true,
+   "copy": false,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": true,
+   "items": [],
+   "more": false
+  },
+  {
+   "access": "SECURE",
+   "media": "video",
+   "readable": false,
+   "ai_edit": false,
+   "swap": false,
+   "wallpaper": false,
+   "copy": false,
+   "items": [],
+   "more": false
+  }
+ ],
+ "activation_rules": [
+  {
+   "when": "access is no longer LIBRARY when a B/C item is activated (viewer re-hosted, secure review)",
+   "outcome": "menu closes; no action, no dialog, nothing written"
+  },
+  {
+   "when": "current item changed since the menu opened (swipe, deletion, refresh)",
+   "outcome": "menu closes; no action; never acts on the new or a neighbouring item"
+  },
+  {
+   "when": "Set as wallpaper: URI unreadable or grant revoked before the handoff",
+   "outcome": "B-unsupported dialog; nothing was changed"
+  },
+  {
+   "when": "Set as wallpaper: no activity resolves ACTION_ATTACH_DATA",
+   "outcome": "B-no-handler dialog; nothing was changed"
+  },
+  {
+   "when": "Copy image: URI unreadable or grant revoked before ClipData is set (clipboard not touched)",
+   "outcome": "C-revoked dialog; the clipboard was not changed (known: no write was attempted)"
+  },
+  {
+   "when": "Copy image: clipboard service failed or the commit state is unknown after the write call",
+   "outcome": "C-unconfirmed dialog; no claim about the clipboard; prior clipboard content is never read or restored; no automatic retry"
+  },
+  {
+   "when": "any failure",
+   "outcome": "fail closed: no fallback photo (no cached bitmap, thumbnail or other item is used instead)"
+  }
  ],
  "frames": [
   {
@@ -162,7 +2396,41 @@
     ],
     "menu_width_px": 448.8,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 451.49,
+     "left": 215.88,
+     "right": 8.53
+    },
+    "width_dp": 159.59
    }
   },
   {
@@ -309,7 +2577,41 @@
     ],
     "menu_width_px": 448.8,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 451.49,
+     "left": 215.88,
+     "right": 8.53
+    },
+    "width_dp": 159.59
    }
   },
   {
@@ -455,7 +2757,41 @@
     ],
     "menu_width_px": 448.8,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 64.71,
+     "bottom": 65.71,
+     "left": 64.0,
+     "right": 515.97
+    },
+    "width_dp": 159.59
    }
   },
   {
@@ -601,7 +2937,41 @@
     ],
     "menu_width_px": 448.8,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 64.71,
+     "bottom": 65.71,
+     "left": 64.0,
+     "right": 515.97
+    },
+    "width_dp": 159.59
    }
   },
   {
@@ -762,7 +3132,41 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 269.42,
+     "left": 95.47,
+     "right": 8.53
+    },
+    "width_dp": 280.0
    }
   },
   {
@@ -794,21 +3198,21 @@
     900,
     800
    ],
-   "photo_visible_fraction": 0.2,
+   "photo_visible_fraction": 0.272,
    "modal_px": [
     305,
-    135.0,
+    203.0,
     787.5,
-    810.0
+    742.0
    ],
    "scroll": {
     "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     340.5,
+     408.5,
      787.5,
-     602.5
+     534.5
     ],
     "offset_px": 0,
     "position": "top",
@@ -822,7 +3226,7 @@
      "label": "Actions for Synthetic lake photo",
      "rect_px": [
       313,
-      157.5,
+      225.5,
       771.5,
       183
      ],
@@ -835,7 +3239,7 @@
      "label": "AI Edit",
      "rect_px": [
       313,
-      340.5,
+      408.5,
       771.5,
       204.9
      ],
@@ -849,7 +3253,7 @@
      "label": "Swap person",
      "rect_px": [
       313,
-      545.4,
+      613.4,
       771.5,
       204.9
      ],
@@ -863,15 +3267,15 @@
      "label": "Set as wallpaper",
      "rect_px": [
       313,
-      750.3,
+      818.3,
       771.5,
-      192.7
+      124.7
      ],
      "lines": 2,
      "visibility": "partial",
      "content_rect_px": [
       313,
-      750.3,
+      818.3,
       771.5,
       314.6
      ],
@@ -886,7 +3290,7 @@
      "visibility": "offscreen",
      "content_rect_px": [
       313,
-      1064.9,
+      1132.9,
       771.5,
       204.9
      ],
@@ -911,7 +3315,7 @@
    ],
    "focus_ring_px": [
     313,
-    157.5,
+    225.5,
     771.5,
     183
    ],
@@ -941,186 +3345,41 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
-   }
-  },
-  {
-   "file": "BC-menu-light-200-landscape-scrolled",
-   "flow": "BC",
-   "stage": "menu",
-   "theme": "light",
-   "orientation": "landscape",
-   "font_scale": 2,
-   "px": [
-    2340,
-    1080
-   ],
-   "insets_ltrb_px": [
-    125,
-    68,
-    135,
-    0
-   ],
-   "density_px_per_dp": 2.8125,
-   "item": {
-    "id": "synthetic-lake",
-    "label": "Synthetic lake photo",
-    "kind": "still image"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
    },
-   "photo_px": [
-    330,
-    90,
-    900,
-    800
-   ],
-   "photo_visible_fraction": 0.2,
-   "modal_px": [
-    305,
-    135.0,
-    787.5,
-    810.0
-   ],
-   "scroll": {
-    "container": "menu rows (identity header pinned)",
-    "content_px": 1157.3,
-    "viewport_px": [
-     305,
-     340.5,
-     787.5,
-     602.5
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
     ],
-    "offset_px": 347.3,
-    "position": "end",
-    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
-   },
-   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
-   "controls": [
-    {
-     "id": "menu-identity",
-     "role": "heading",
-     "label": "Actions for Synthetic lake photo",
-     "rect_px": [
-      313,
-      157.5,
-      771.5,
-      183
-     ],
-     "visibility": "full",
-     "pinned": true
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
     },
-    {
-     "id": "ai-edit",
-     "role": "menuitem",
-     "label": "AI Edit",
-     "rect_px": null,
-     "lines": 1,
-     "visibility": "offscreen",
-     "content_rect_px": [
-      313,
-      340.5,
-      771.5,
-      204.9
-     ],
-     "activation": "none"
-    },
-    {
-     "id": "swap-person",
-     "role": "menuitem",
-     "label": "Swap person",
-     "rect_px": [
-      313,
-      340.5,
-      771.5,
-      62.5
-     ],
-     "lines": 1,
-     "visibility": "partial",
-     "content_rect_px": [
-      313,
-      545.4,
-      771.5,
-      204.9
-     ],
-     "activation": "reveal-only"
-    },
-    {
-     "id": "set-wallpaper",
-     "role": "menuitem",
-     "label": "Set as wallpaper",
-     "rect_px": [
-      313,
-      403.0,
-      771.5,
-      314.6
-     ],
-     "lines": 2,
-     "visibility": "full",
-     "activation": "activate"
-    },
-    {
-     "id": "copy-image",
-     "role": "menuitem",
-     "label": "Copy image",
-     "rect_px": [
-      313,
-      717.6,
-      771.5,
-      204.9
-     ],
-     "lines": 1,
-     "visibility": "full",
-     "activation": "activate"
-    }
-   ],
-   "focus_order": [
-    "menu-identity",
-    "ai-edit",
-    "swap-person",
-    "set-wallpaper",
-    "copy-image"
-   ],
-   "inert_background_controls": [
-    "back",
-    "more",
-    "photo",
-    "slab-favourite",
-    "slab-edit",
-    "slab-share",
-    "slab-delete"
-   ],
-   "focus_ring_px": [
-    313,
-    157.5,
-    771.5,
-    183
-   ],
-   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
-   "status": {
-    "menu_items": [
-     {
-      "id": "ai-edit",
-      "label": "AI Edit",
-      "origin": "existing; still image and PhotoEditorHandoff.eligible"
-     },
-     {
-      "id": "swap-person",
-      "label": "Swap person",
-      "origin": "existing; only when the swap port says eligible"
-     },
-     {
-      "id": "set-wallpaper",
-      "label": "Set as wallpaper",
-      "origin": "proposed; still images only"
-     },
-     {
-      "id": "copy-image",
-      "label": "Copy image",
-      "origin": "proposed; still images only"
-     }
-    ],
-    "menu_width_px": 787.5,
-    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "width_dp": 280.0
    }
   },
   {
@@ -1281,7 +3540,41 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 269.42,
+     "left": 95.47,
+     "right": 8.53
+    },
+    "width_dp": 280.0
    }
   },
   {
@@ -1313,21 +3606,21 @@
     900,
     800
    ],
-   "photo_visible_fraction": 0.2,
+   "photo_visible_fraction": 0.272,
    "modal_px": [
     305,
-    135.0,
+    203.0,
     787.5,
-    810.0
+    742.0
    ],
    "scroll": {
     "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     340.5,
+     408.5,
      787.5,
-     602.5
+     534.5
     ],
     "offset_px": 0,
     "position": "top",
@@ -1341,7 +3634,7 @@
      "label": "Actions for Synthetic lake photo",
      "rect_px": [
       313,
-      157.5,
+      225.5,
       771.5,
       183
      ],
@@ -1354,7 +3647,7 @@
      "label": "AI Edit",
      "rect_px": [
       313,
-      340.5,
+      408.5,
       771.5,
       204.9
      ],
@@ -1368,7 +3661,7 @@
      "label": "Swap person",
      "rect_px": [
       313,
-      545.4,
+      613.4,
       771.5,
       204.9
      ],
@@ -1382,15 +3675,15 @@
      "label": "Set as wallpaper",
      "rect_px": [
       313,
-      750.3,
+      818.3,
       771.5,
-      192.7
+      124.7
      ],
      "lines": 2,
      "visibility": "partial",
      "content_rect_px": [
       313,
-      750.3,
+      818.3,
       771.5,
       314.6
      ],
@@ -1405,7 +3698,7 @@
      "visibility": "offscreen",
      "content_rect_px": [
       313,
-      1064.9,
+      1132.9,
       771.5,
       204.9
      ],
@@ -1430,7 +3723,7 @@
    ],
    "focus_ring_px": [
     313,
-    157.5,
+    225.5,
     771.5,
     183
    ],
@@ -1460,186 +3753,41 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
-   }
-  },
-  {
-   "file": "BC-menu-dark-200-landscape-scrolled",
-   "flow": "BC",
-   "stage": "menu",
-   "theme": "dark",
-   "orientation": "landscape",
-   "font_scale": 2,
-   "px": [
-    2340,
-    1080
-   ],
-   "insets_ltrb_px": [
-    125,
-    68,
-    135,
-    0
-   ],
-   "density_px_per_dp": 2.8125,
-   "item": {
-    "id": "synthetic-lake",
-    "label": "Synthetic lake photo",
-    "kind": "still image"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
    },
-   "photo_px": [
-    330,
-    90,
-    900,
-    800
-   ],
-   "photo_visible_fraction": 0.2,
-   "modal_px": [
-    305,
-    135.0,
-    787.5,
-    810.0
-   ],
-   "scroll": {
-    "container": "menu rows (identity header pinned)",
-    "content_px": 1157.3,
-    "viewport_px": [
-     305,
-     340.5,
-     787.5,
-     602.5
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
     ],
-    "offset_px": 347.3,
-    "position": "end",
-    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
-   },
-   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
-   "controls": [
-    {
-     "id": "menu-identity",
-     "role": "heading",
-     "label": "Actions for Synthetic lake photo",
-     "rect_px": [
-      313,
-      157.5,
-      771.5,
-      183
-     ],
-     "visibility": "full",
-     "pinned": true
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
     },
-    {
-     "id": "ai-edit",
-     "role": "menuitem",
-     "label": "AI Edit",
-     "rect_px": null,
-     "lines": 1,
-     "visibility": "offscreen",
-     "content_rect_px": [
-      313,
-      340.5,
-      771.5,
-      204.9
-     ],
-     "activation": "none"
-    },
-    {
-     "id": "swap-person",
-     "role": "menuitem",
-     "label": "Swap person",
-     "rect_px": [
-      313,
-      340.5,
-      771.5,
-      62.5
-     ],
-     "lines": 1,
-     "visibility": "partial",
-     "content_rect_px": [
-      313,
-      545.4,
-      771.5,
-      204.9
-     ],
-     "activation": "reveal-only"
-    },
-    {
-     "id": "set-wallpaper",
-     "role": "menuitem",
-     "label": "Set as wallpaper",
-     "rect_px": [
-      313,
-      403.0,
-      771.5,
-      314.6
-     ],
-     "lines": 2,
-     "visibility": "full",
-     "activation": "activate"
-    },
-    {
-     "id": "copy-image",
-     "role": "menuitem",
-     "label": "Copy image",
-     "rect_px": [
-      313,
-      717.6,
-      771.5,
-      204.9
-     ],
-     "lines": 1,
-     "visibility": "full",
-     "activation": "activate"
-    }
-   ],
-   "focus_order": [
-    "menu-identity",
-    "ai-edit",
-    "swap-person",
-    "set-wallpaper",
-    "copy-image"
-   ],
-   "inert_background_controls": [
-    "back",
-    "more",
-    "photo",
-    "slab-favourite",
-    "slab-edit",
-    "slab-share",
-    "slab-delete"
-   ],
-   "focus_ring_px": [
-    313,
-    157.5,
-    771.5,
-    183
-   ],
-   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
-   "status": {
-    "menu_items": [
-     {
-      "id": "ai-edit",
-      "label": "AI Edit",
-      "origin": "existing; still image and PhotoEditorHandoff.eligible"
-     },
-     {
-      "id": "swap-person",
-      "label": "Swap person",
-      "origin": "existing; only when the swap port says eligible"
-     },
-     {
-      "id": "set-wallpaper",
-      "label": "Set as wallpaper",
-      "origin": "proposed; still images only"
-     },
-     {
-      "id": "copy-image",
-      "label": "Copy image",
-      "origin": "proposed; still images only"
-     }
-    ],
-    "menu_width_px": 787.5,
-    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "width_dp": 280.0
    }
   },
   {
@@ -1780,7 +3928,40 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": false,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 342.27,
+     "left": 95.47,
+     "right": 8.53
+    },
+    "width_dp": 280.0
    }
   },
   {
@@ -1901,8 +4082,2022 @@
     ],
     "menu_width_px": 787.5,
     "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
-    "eligibility": "still image; Swap person only when eligible; More hidden when no item applies"
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": false,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 415.12,
+     "left": 95.47,
+     "right": 8.53
+    },
+    "width_dp": 280.0
    }
+  },
+  {
+   "file": "BC-menu-onlycopy-light-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.544,
+   "modal_px": [
+    414.5,
+    290,
+    641.5,
+    927.1
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      422.5,
+      312.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      422.5,
+      579.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      422.5,
+      784.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      422.5,
+      989.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    422.5,
+    312.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 351.26,
+     "left": 147.39,
+     "right": 8.53
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-onlycopy-light-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.412,
+   "modal_px": [
+    305,
+    203.0,
+    641.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 927.1,
+    "viewport_px": [
+     305,
+     492.9,
+     641.5,
+     450.1
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      492.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      697.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      902.7,
+      625.5,
+      40.3
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      902.7,
+      625.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-onlycopy-dark-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.544,
+   "modal_px": [
+    414.5,
+    290,
+    641.5,
+    927.1
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      422.5,
+      312.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      422.5,
+      579.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      422.5,
+      784.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      422.5,
+      989.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    422.5,
+    312.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 351.26,
+     "left": 147.39,
+     "right": 8.53
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-onlycopy-dark-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.412,
+   "modal_px": [
+    305,
+    203.0,
+    641.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 927.1,
+    "viewport_px": [
+     305,
+     492.9,
+     641.5,
+     450.1
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      492.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      697.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      902.7,
+      625.5,
+      40.3
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      902.7,
+      625.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-existingonly-light-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.645,
+   "modal_px": [
+    414.5,
+    290,
+    641.5,
+    722.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      422.5,
+      312.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      422.5,
+      579.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      422.5,
+      784.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    422.5,
+    312.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": false
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 424.12,
+     "left": 147.39,
+     "right": 8.53
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-existingonly-light-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.429,
+   "modal_px": [
+    305,
+    222.8,
+    641.5,
+    722.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      245.3,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      512.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      717.6,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    245.3,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": false
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 55.05,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-existingonly-dark-200",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.645,
+   "modal_px": [
+    414.5,
+    290,
+    641.5,
+    722.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      422.5,
+      312.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      422.5,
+      579.9,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      422.5,
+      784.8,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    422.5,
+    312.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": false
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     0,
+     125,
+     1080,
+     2080
+    ],
+    "top_limit_px": 260.0,
+    "bottom_limit_px": 2070.0,
+    "left_limit_px": 22.5,
+    "right_limit_px": 1057.5,
+    "gaps_dp": {
+     "top": 58.67,
+     "bottom": 424.12,
+     "left": 147.39,
+     "right": 8.53
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-existingonly-dark-200-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.429,
+   "modal_px": [
+    305,
+    222.8,
+    641.5,
+    722.2
+   ],
+   "scroll": null,
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      245.3,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      512.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      717.6,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    245.3,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": false
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 55.05,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "V-external-still",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back finishes the Activity and returns to the calling app",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "details",
+     "role": "button",
+     "label": "Photo or video details",
+     "rect_px": [
+      890,
+      137,
+      166,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "details",
+    "photo"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "EXTERNAL",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "V-external-still-landscape",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back finishes the Activity and returns to the calling app",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      145,
+      90,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "details",
+     "role": "button",
+     "label": "Photo or video details",
+     "rect_px": [
+      145,
+      250,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      330,
+      90,
+      900,
+      800
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "details",
+    "photo"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "EXTERNAL",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "V-secure-still",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back finishes the Activity and returns to the camera",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back to camera",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "photo"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "SECURE",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "V-secure-still-landscape",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back finishes the Activity and returns to the camera",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back to camera",
+     "rect_px": [
+      145,
+      90,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      330,
+      90,
+      900,
+      800
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "photo"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "SECURE",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "V-library-video",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back returns to the gallery grid",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back to gallery",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "details",
+     "role": "button",
+     "label": "Photo or video details",
+     "rect_px": [
+      890,
+      137,
+      166,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake video",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ]
+    },
+    {
+     "id": "play",
+     "role": "button",
+     "label": "Play video",
+     "rect_px": [
+      450,
+      840,
+      180,
+      180
+     ]
+    },
+    {
+     "id": "filmstrip-current",
+     "role": "button",
+     "label": "Current photo in filmstrip",
+     "rect_px": [
+      470,
+      1853,
+      140,
+      154
+     ]
+    },
+    {
+     "id": "slab-favourite",
+     "role": "button",
+     "label": "Favourite",
+     "rect_px": [
+      296.0,
+      2042,
+      162.5,
+      145
+     ]
+    },
+    {
+     "id": "slab-share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      458.5,
+      2042,
+      162.5,
+      145
+     ]
+    },
+    {
+     "id": "slab-delete",
+     "role": "button",
+     "label": "Delete",
+     "rect_px": [
+      621.0,
+      2042,
+      162.5,
+      145
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "details",
+    "photo",
+    "play",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-share",
+    "slab-delete"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "video",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "V-library-video-landscape",
+   "flow": "V",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": null,
+   "scroll": null,
+   "dismiss": "Back returns to the gallery grid",
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back to gallery",
+     "rect_px": [
+      145,
+      90,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "details",
+     "role": "button",
+     "label": "Photo or video details",
+     "rect_px": [
+      145,
+      250,
+      144,
+      138
+     ]
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake video",
+     "rect_px": [
+      330,
+      90,
+      900,
+      800
+     ]
+    },
+    {
+     "id": "play",
+     "role": "button",
+     "label": "Play video",
+     "rect_px": [
+      690,
+      400,
+      180,
+      180
+     ]
+    },
+    {
+     "id": "slab-favourite",
+     "role": "button",
+     "label": "Favourite",
+     "rect_px": [
+      536.0,
+      915,
+      162.5,
+      145
+     ]
+    },
+    {
+     "id": "slab-share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      698.5,
+      915,
+      162.5,
+      145
+     ]
+    },
+    {
+     "id": "slab-delete",
+     "role": "button",
+     "label": "Delete",
+     "rect_px": [
+      861.0,
+      915,
+      162.5,
+      145
+     ]
+    }
+   ],
+   "focus_order": [
+    "back",
+    "details",
+    "photo",
+    "play",
+    "slab-favourite",
+    "slab-share",
+    "slab-delete"
+   ],
+   "inert_background_controls": [],
+   "focus_ring_px": null,
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "video",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [],
+    "more_shown": false,
+    "theme_note": "viewer ground is always black; ExternalViewerHost forces the dark theme",
+    "font_scale_note": "icon-only chrome; no text grows with font scale in this state"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-light",
@@ -1990,9 +6185,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-light-200",
@@ -2080,9 +6280,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-light-200-landscape",
@@ -2169,9 +6374,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-dark",
@@ -2259,9 +6469,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-dark-200",
@@ -2349,9 +6564,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-no-handler-dark-200-landscape",
@@ -2438,9 +6658,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "missing handler: no activity resolves ACTION_ATTACH_DATA",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-light",
@@ -2528,9 +6753,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-light-200",
@@ -2618,9 +6848,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-light-200-landscape",
@@ -2719,9 +6954,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-dark",
@@ -2809,9 +7049,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-dark-200",
@@ -2899,9 +7144,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-dark-200-landscape",
@@ -3000,9 +7250,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-light",
@@ -3089,10 +7344,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-light-200",
@@ -3179,10 +7439,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-light-200-landscape",
@@ -3280,10 +7545,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-dark",
@@ -3370,10 +7640,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-dark-200",
@@ -3460,10 +7735,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-dark-200-landscape",
@@ -3561,9 +7841,2040 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-light",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-light-landscape",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    614.3,
+    925,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      650.3,
+      801,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      870.0,
+      793,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    644.3,
+    813,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-light-200",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.716,
+   "modal_px": [
+    52,
+    1210.2,
+    976,
+    984.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      114,
+      1246.2,
+      852,
+      695.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1240.2,
+    864,
+    707.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-light-200-landscape",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-dark",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      2005.0,
+      844,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-dark-landscape",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    614.3,
+    925,
+    445.7
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      650.3,
+      801,
+      195.7
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      870.0,
+      793,
+      150
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    644.3,
+    813,
+    207.7
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-dark-200",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "photo_visible_fraction": 0.716,
+   "modal_px": [
+    52,
+    1210.2,
+    976,
+    984.8
+   ],
+   "scroll": null,
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      114,
+      1246.2,
+      852,
+      695.8
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118,
+      1966.0,
+      844,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    108,
+    1240.2,
+    864,
+    707.8
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-dark-200-landscape",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 0,
+    "position": "top",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "BC-menu-light-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.272,
+   "modal_px": [
+    305,
+    203.0,
+    787.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     408.5,
+     787.5,
+     534.5
+    ],
+    "offset_px": 415.3,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      771.5,
+      183
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      408.5,
+      771.5,
+      204.9
+     ],
+     "activation": "none"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      613.4,
+      771.5,
+      204.9
+     ],
+     "activation": "none"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      408.5,
+      771.5,
+      309.1
+     ],
+     "lines": 2,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      818.3,
+      771.5,
+      314.6
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    771.5,
+    183
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
+    },
+    "width_dp": 280.0
+   }
+  },
+  {
+   "file": "BC-menu-light-200-landscape-scrolled-mid",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.272,
+   "modal_px": [
+    305,
+    203.0,
+    787.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     408.5,
+     787.5,
+     534.5
+    ],
+    "offset_px": 190.9,
+    "position": "middle",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      771.5,
+      183
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      408.5,
+      771.5,
+      14.0
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      408.5,
+      771.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      422.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      627.4,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      942.0,
+      771.5,
+      1.0
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      1132.9,
+      771.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    771.5,
+    183
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
+    },
+    "width_dp": 280.0
+   }
+  },
+  {
+   "file": "BC-menu-dark-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.272,
+   "modal_px": [
+    305,
+    203.0,
+    787.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     408.5,
+     787.5,
+     534.5
+    ],
+    "offset_px": 415.3,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      771.5,
+      183
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      408.5,
+      771.5,
+      204.9
+     ],
+     "activation": "none"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": null,
+     "lines": 1,
+     "visibility": "offscreen",
+     "content_rect_px": [
+      313,
+      613.4,
+      771.5,
+      204.9
+     ],
+     "activation": "none"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      408.5,
+      771.5,
+      309.1
+     ],
+     "lines": 2,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      818.3,
+      771.5,
+      314.6
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    771.5,
+    183
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
+    },
+    "width_dp": 280.0
+   }
+  },
+  {
+   "file": "BC-menu-dark-200-landscape-scrolled-mid",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.272,
+   "modal_px": [
+    305,
+    203.0,
+    787.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 1157.3,
+    "viewport_px": [
+     305,
+     408.5,
+     787.5,
+     534.5
+    ],
+    "offset_px": 190.9,
+    "position": "middle",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      771.5,
+      183
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      408.5,
+      771.5,
+      14.0
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      408.5,
+      771.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      422.5,
+      771.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      627.4,
+      771.5,
+      314.6
+     ],
+     "lines": 2,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      942.0,
+      771.5,
+      1.0
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      1132.9,
+      771.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    771.5,
+    183
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed; still images only"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 787.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": true,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "set-wallpaper",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 395.56
+    },
+    "width_dp": 280.0
+   }
+  },
+  {
+   "file": "BC-menu-onlycopy-light-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.412,
+   "modal_px": [
+    305,
+    203.0,
+    641.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 927.1,
+    "viewport_px": [
+     305,
+     492.9,
+     641.5,
+     450.1
+    ],
+    "offset_px": 185.1,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      492.9,
+      625.5,
+      19.8
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      492.9,
+      625.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      512.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
+   }
+  },
+  {
+   "file": "BC-menu-onlycopy-dark-200-landscape-scrolled",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 0.412,
+   "modal_px": [
+    305,
+    203.0,
+    641.5,
+    742.0
+   ],
+   "scroll": {
+    "container": "menu rows (identity header pinned)",
+    "content_px": 927.1,
+    "viewport_px": [
+     305,
+     492.9,
+     641.5,
+     450.1
+    ],
+    "offset_px": 185.1,
+    "position": "end",
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is a scroll cue only: a tap or focus scrolls it fully into view and never activates it"
+   },
+   "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
+   "controls": [
+    {
+     "id": "menu-identity",
+     "role": "heading",
+     "label": "Actions for Synthetic lake photo",
+     "rect_px": [
+      313,
+      225.5,
+      625.5,
+      267.4
+     ],
+     "visibility": "full",
+     "pinned": true
+    },
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      492.9,
+      625.5,
+      19.8
+     ],
+     "lines": 1,
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      492.9,
+      625.5,
+      204.9
+     ],
+     "activation": "reveal-only"
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      512.7,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      717.6,
+      625.5,
+      204.9
+     ],
+     "lines": 1,
+     "visibility": "full",
+     "activation": "activate"
+    }
+   ],
+   "focus_order": [
+    "menu-identity",
+    "ai-edit",
+    "swap-person",
+    "copy-image"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    313,
+    225.5,
+    625.5,
+    267.4
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing; still image and PhotoEditorHandoff.eligible"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing; only when the swap port says eligible"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed; still images only"
+     }
+    ],
+    "menu_width_px": 641.5,
+    "menu_width_rule": "112-280 dp; labels wrap at 280 dp",
+    "eligibility": {
+     "access": "LIBRARY",
+     "media": "still",
+     "readable": true,
+     "ai_edit": true,
+     "swap": true,
+     "wallpaper": false,
+     "copy": true
+    },
+    "expected_items": [
+     "ai-edit",
+     "swap-person",
+     "copy-image"
+    ]
+   },
+   "menu_limits": {
+    "rule": "48 dp vertical margin from the safe window (insets not double counted); horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp",
+    "safe_window_px": [
+     125,
+     68,
+     2080,
+     1012
+    ],
+    "top_limit_px": 203.0,
+    "bottom_limit_px": 945.0,
+    "left_limit_px": 147.5,
+    "right_limit_px": 2182.5,
+    "gaps_dp": {
+     "top": 48.0,
+     "bottom": 48.0,
+     "left": 64.0,
+     "right": 447.48
+    },
+    "width_dp": 228.08
    }
   },
   {
@@ -3663,9 +9974,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "B-unsupported-dark-200-landscape-scrolled",
@@ -3764,9 +10080,14 @@
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "case": "unsupported still, or read grant revoked before handoff",
+    "atlas_owned": true,
+    "clipboard": "untouched",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-light-200-landscape-scrolled",
@@ -3864,10 +10185,15 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   },
   {
    "file": "C-revoked-dark-200-landscape-scrolled",
@@ -3965,10 +10291,227 @@
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
-    "case": "read grant revoked or URI unreadable before ClipData is set",
+    "case": "read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)",
+    "atlas_owned": true,
+    "clipboard": "unchanged (known: failure before any write)",
     "changed": "nothing (wallpaper, clipboard and file untouched)",
-    "atlas_owned": true
-   }
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-light-200-landscape-scrolled",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 12.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
+  },
+  {
+   "file": "C-unconfirmed-dark-200-landscape-scrolled",
+   "flow": "C",
+   "stage": "unconfirmed",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "item": {
+    "id": "synthetic-lake",
+    "label": "Synthetic lake photo",
+    "kind": "still image"
+   },
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "photo_visible_fraction": 1.0,
+   "modal_px": [
+    1260,
+    88,
+    925,
+    972
+   ],
+   "scroll": {
+    "container": "message",
+    "content_px": 695.8,
+    "viewport_px": [
+     1322,
+     124,
+     801,
+     683.0
+    ],
+    "offset_px": 12.8,
+    "position": "end",
+    "reveal": "the message scrolls; OK stays pinned; TalkBack reads the whole message"
+   },
+   "dismiss": "OK or system Back returns to the same viewer item; nothing is changed",
+   "controls": [
+    {
+     "id": "error-message",
+     "role": "alert",
+     "label": "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again.",
+     "rect_px": [
+      1322,
+      124,
+      801,
+      683.0
+     ]
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1326,
+      831.0,
+      793,
+      189.0
+     ],
+     "dismiss": true
+    }
+   ],
+   "focus_order": [
+    "error-message",
+    "ok"
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": [
+    1316,
+    118,
+    813,
+    695.0
+   ],
+   "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
+   "status": {
+    "case": "clipboard service failure, or commit state unknown after the write call",
+    "atlas_owned": true,
+    "clipboard": "unknown (not read, not restored, not retried)",
+    "changed": "unknown for the clipboard; wallpaper and file untouched",
+    "reads_or_restores_prior_clipboard": false,
+    "automatic_retry": false,
+    "returns_focus_to": "same viewer item"
+   },
+   "menu_limits": null
   }
  ]
 }
