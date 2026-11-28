@@ -317,6 +317,7 @@ fun AtlasAlbumsScreen(
     onRetry: (() -> Unit)? = null,
     onChooseCover: ((AlbumRoute) -> Unit)? = null,
     onOpenStories: (() -> Unit)? = null,
+    onOpenPeople: (() -> Unit)? = null,
     onOpenPhotoDna: (() -> Unit)? = null,
     /** Samsung's "Hide albums" screen (#568, parity research GRID:A7). */
     onOpenHideAlbums: (() -> Unit)? = null,
@@ -341,6 +342,8 @@ fun AtlasAlbumsScreen(
             menuItems = buildList {
                 if (onOpenStories != null) add(AtlasHeaderMenuItem(
                     "Stories", "atlas-albums-menu-stories", onClick = onOpenStories))
+                if (onOpenPeople != null) add(AtlasHeaderMenuItem(
+                    "People", "atlas-albums-menu-people", onClick = onOpenPeople))
                 if (onOpenPhotoDna != null) add(AtlasHeaderMenuItem(
                     "Photo DNA", "atlas-albums-menu-photo-dna", onClick = onOpenPhotoDna))
                 if (onOpenHideAlbums != null) add(AtlasHeaderMenuItem(

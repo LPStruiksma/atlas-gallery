@@ -327,11 +327,14 @@ enum class AtlasDestination(
 ) {
     // #685: photos = a single picture, albums = a four-tile grid.
     // #652: inactive glyphs are outlined; active glyphs are filled (#509 §0).
-    PHOTOS("Photos", Icons.Outlined.Image, Icons.Filled.Image),
-    ALBUMS("Albums", Icons.Outlined.GridView, Icons.Filled.GridView),
+    PHOTOS("Pictures", Icons.Outlined.Image, Icons.Filled.Image),
+    ALBUMS("Collections", Icons.Outlined.GridView, Icons.Filled.GridView),
     PEOPLE("People", Icons.Outlined.People, Icons.Filled.People),
     SEARCH("Search", Icons.Outlined.Search, Icons.Filled.Search)
 }
+
+internal fun navigationSelection(destination: AtlasDestination): AtlasDestination =
+    if (destination == AtlasDestination.PEOPLE) AtlasDestination.ALBUMS else destination
 
 /**
  * #22: the Scaffold's main content records its actual drawing commands in a
@@ -361,11 +364,8 @@ internal fun Modifier.atlasCaptureTabBackdrop(backdrop: AtlasTabBackdropState): 
         }
 
 /**
- * #640 (#509 §2): Samsung's compact floating tab bar. One fully rounded dark
- * pill, 12 dp from the screen edges, outlined-weight 24 dp icons with small
- * labels; the active tab uses the filled glyph, tint and label weight,
- * never a Material selection blob. Activity is a secondary settings surface, never a primary
- * gallery destination.
+ * BRAND-L4: one centred lapis slab for Pictures, Collections and Search. Albums,
+ * Stories and People remain collection routes rather than competing primary tabs.
  */
 @Composable
 fun AtlasGalleryNavigation(
@@ -380,56 +380,26 @@ fun AtlasGalleryNavigation(
             .padding(horizontal = AtlasPillEdge, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        val backdrop = LocalAtlasTabBackdrop.current
-        val blurredLayer = rememberGraphicsLayer()
-        val blurRadiusPx = with(LocalDensity.current) { 14.dp.toPx() }
-        val blurEffect = remember(blurRadiusPx) {
-            BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Clamp)
-        }
-        var pillOrigin by remember { mutableStateOf(Offset.Unspecified) }
         Box(
-            Modifier.fillMaxWidth().height(AtlasTabPillHeight)
-                .onGloballyPositioned { pillOrigin = it.positionInRoot() }
+            Modifier.widthIn(max = 360.dp).fillMaxWidth().height(AtlasTabPillHeight)
         ) {
-            // API31+: blur only the live page underneath the pill, clipped to
-            // its outline. The translucent Surface and all four tab items are
-            // drawn *after* the effect, so text and glyphs remain pixel-sharp.
-            // API29-30: no RenderEffect; keep the existing translucent Surface.
-            if (Build.VERSION.SDK_INT >= 31 && backdrop != null) {
-                Box(Modifier.matchParentSize().clip(CircleShape).drawWithContent {
-                    if (pillOrigin.isSpecified && backdrop.originInRoot.isSpecified) {
-                        val shift = backdrop.originInRoot - pillOrigin
-                        blurredLayer.record(
-                            size = IntSize(size.width.roundToInt(), size.height.roundToInt())
-                        ) {
-                            translate(left = shift.x, top = shift.y) {
-                                drawLayer(backdrop.layer)
-                            }
-                        }
-                        blurredLayer.renderEffect = blurEffect
-                        drawLayer(blurredLayer)
-                    }
-                })
-            }
             Surface(
                 shape = CircleShape,
-                color = AtlasPillColor,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                // A white pill needs a soft shadow to lift off a white page.
-                shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shadowElevation = 6.dp,
                 modifier = Modifier.matchParentSize().testTag("atlas-nav-pill")
             ) {
                 Row(
-                    Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                    Modifier.fillMaxSize().padding(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AtlasDestination.entries.forEach { destination ->
-                        AtlasTabItem(
-                            destination = destination,
-                            selected = selected == destination,
-                            onClick = { onSelect(destination) },
-                            modifier = Modifier.weight(1f)
-                        )
+                    listOf(AtlasDestination.PHOTOS, AtlasDestination.ALBUMS).forEach { destination ->
+                        AtlasTabItem(destination, navigationSelection(selected) == destination,
+                            { onSelect(destination) }, Modifier.weight(1f))
+                    }
+                    AtlasSearchSphere(selected == AtlasDestination.SEARCH) {
+                        onSelect(AtlasDestination.SEARCH)
                     }
                 }
             }
@@ -474,7 +444,8 @@ private fun AtlasTabItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val ink = MaterialTheme.colorScheme.onSurface
+    val ink = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onPrimary
     val fontScale = LocalDensity.current.fontScale
     val labelSize = navigationLabelSize(LocalDensity.current.fontScale)
     // #413: the inherited line height is in sp too; cap it with the size, or at
@@ -484,20 +455,21 @@ private fun AtlasTabItem(
     val labelLineHeight = if (inheritedLineHeight.isSp)
         inheritedLineHeight * navigationLabelCap(fontScale) else inheritedLineHeight
     // 14sp labels still meet text contrast over a white tile behind the dark pill.
-    val tint = if (selected) ink else ink.copy(alpha = 0.78f)
-    Column(
+    val tint = if (selected) ink else ink.copy(alpha = 0.86f)
+    Row(
         modifier
             .fillMaxHeight()
             .clip(CircleShape)
+            .background(if (selected) MaterialTheme.colorScheme.onPrimary else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .testTag("atlas-nav-" + destination.name.lowercase()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(if (selected) destination.selectedIcon else destination.icon,
             contentDescription = null, tint = tint,
-            modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(2.dp))
+            modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             destination.title,
             color = tint,
@@ -507,6 +479,23 @@ private fun AtlasTabItem(
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun AtlasSearchSphere(selected: Boolean, onClick: () -> Unit) {
+    val background = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.primaryContainer
+    val tint = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onPrimary
+    Box(
+        Modifier.size(48.dp).clip(CircleShape).background(background)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .testTag("atlas-nav-search"),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = "Search", tint = tint,
+            modifier = Modifier.size(24.dp))
     }
 }
 
