@@ -39,6 +39,7 @@ private fun readableBytes(size: Long): String = cleanupSize(size)
  * resume where saved Keeps end and records new Keeps. Without them it behaves
  * exactly like the plain folder review.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @androidx.compose.runtime.NonSkippableComposable
 @Composable
 internal fun DeclutterScreen(
@@ -106,36 +107,40 @@ internal fun DeclutterScreen(
                 }
             }
         } else if (!confirmingReset) {
-            AlertDialog(
+            ModalBottomSheet(
                 onDismissRequest = onExit,
-                title = { Text("Resume review?") },
-                text = { Text(
-                    "Reviewed ${progress.reviewed} of ${progress.total}. " +
-                    "Resume with the first photo you have not kept yet."
-                ) },
-                confirmButton = {
-                    TextButton(
-                        onClick = { resume = true },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                            .testTag("atlas-declutter-resume")
-                    ) { Text("Resume review") }
-                },
-                dismissButton = {
-                    Row {
-                        TextButton(
-                            onClick = { confirmingReset = true },
-                            modifier = Modifier.heightIn(min = 48.dp)
-                                .testTag("atlas-declutter-start-again")
-                        ) { Text("Start again") }
-                        TextButton(
-                            onClick = onExit,
-                            modifier = Modifier.heightIn(min = 48.dp)
-                                .testTag("atlas-declutter-not-now")
-                        ) { Text("Not now") }
-                    }
-                },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 modifier = Modifier.testTag("atlas-declutter-resume-dialog")
-            )
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().navigationBarsPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp).padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Resume review?", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Reviewed ${progress.reviewed} of ${progress.total}. " +
+                            "Resume with the first photo you have not kept yet.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Button(
+                        onClick = { resume = true },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-resume")
+                    ) { Text("Resume") }
+                    OutlinedButton(
+                        onClick = { confirmingReset = true },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-start-again")
+                    ) { Text("Start again") }
+                    TextButton(
+                        onClick = onExit,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-not-now")
+                    ) { Text("Not now") }
+                }
+            }
         }
         if (!progress.complete) Box(Modifier.fillMaxSize())
         return

@@ -44,6 +44,8 @@ internal fun PhotoDnaReviewScreen(
     thumbnail: @Composable (CurationAsset, Modifier) -> Unit,
     onReviewRequested: (CurationReviewRequest) -> Unit,
     onComparePair: (CurationVisualPair) -> Unit,
+    /** A frozen exact-family or near-match source; this callback never stages Trash. */
+    onDeclutterSource: (String, List<String>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     /** An explicit Keep tap (group key, keeper URI). It never stages anything for Trash. */
     onKeeperChosen: (String, String) -> Unit = { _, _ -> },
@@ -181,6 +183,13 @@ internal fun PhotoDnaReviewScreen(
                         enabled = selected.isNotEmpty() && selected.size <= 200,
                         modifier = Modifier.testTag("photo-dna-final-review")
                     ) { Text(PhotoDnaCopy.REVIEW_SELECTED) }
+                    TextButton(
+                        onClick = {
+                            onDeclutterSource("exact:${group.key}", group.members.map { it.uri })
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("photo-dna-declutter-group")
+                    ) { Text("Review group with Declutter") }
                 }
             }
         }
@@ -206,7 +215,21 @@ internal fun PhotoDnaReviewScreen(
                             Text(pair.right.title, maxLines = 1)
                         }
                     }
-                    TextButton(onClick = { onComparePair(pair) }) { Text(PhotoDnaCopy.COMPARE) }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(
+                            onClick = { onComparePair(pair) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text(PhotoDnaCopy.COMPARE) }
+                        TextButton(
+                            onClick = {
+                                onDeclutterSource(
+                                    "visual:${pair.left.uri}:${pair.right.uri}",
+                                    listOf(pair.left.uri, pair.right.uri))
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .testTag("photo-dna-declutter-pair")
+                        ) { Text("Review with Declutter") }
+                    }
                 }
             }
         }

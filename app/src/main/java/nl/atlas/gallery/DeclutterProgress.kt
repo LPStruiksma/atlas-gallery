@@ -17,11 +17,26 @@ fun declutterScopeKey(
     id: String,
     filter: String = "",
     sort: String = "",
-    month: String = ""
+    month: String = "",
+    snapshot: String = ""
 ): String {
     require(kind.isNotBlank() && id.isNotBlank()) { "A review source needs a kind and an id" }
     fun esc(part: String) = part.replace("\\", "\\\\").replace("|", "\\|")
-    return listOf("v1", kind, id, filter, sort, month).joinToString("|") { esc(it) }
+    val fields = if (snapshot.isBlank()) listOf("v1", kind, id, filter, sort, month)
+        else listOf("v2", kind, id, filter, sort, month, snapshot)
+    return fields.joinToString("|") { esc(it) }
+}
+
+/** Fingerprint the exact frozen source membership, order and media revisions. */
+fun declutterSourceFingerprint(items: List<MediaRecord>): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    items.forEach { item ->
+        digest.update(
+            ("\u0000" + item.uri + "\u0000" + item.sizeBytes + "\u0000" +
+                item.modifiedAtSeconds + "\n").toByteArray(Charsets.UTF_8)
+        )
+    }
+    return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
 }
 
 /**

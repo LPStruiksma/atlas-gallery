@@ -1845,23 +1845,63 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var declutterItems by remember {
         mutableStateOf<List<MediaRecord>?>(null, referentialEqualityPolicy())
     }
+    var declutterSourceKind by remember { mutableStateOf<String?>(null) }
+    var declutterSourceId by remember { mutableStateOf<String?>(null) }
+    var declutterSourceFilter by remember { mutableStateOf("") }
+    var declutterSourceSort by remember { mutableStateOf("source-order") }
+    var declutterPersistentScope by remember { mutableStateOf<String?>(null) }
     var trashPreflightPending by remember { mutableStateOf(false) }
     val atlasScope = rememberCoroutineScope()
     fun closeDeclutter() {
         declutterFolder = null
         declutterItems = null
         declutterSource = null
+        declutterSourceKind = null
+        declutterSourceId = null
+        declutterSourceFilter = ""
+        declutterSourceSort = "source-order"
+        declutterPersistentScope = null
         trashPreflightPending = false
     }
-    // Distinct source objects must restart the background deck build even
-    // when all MediaStore metadata happens to compare value-equal.
-    LaunchedEffect(declutterFolder, declutterSource?.let(::CatalogSourceKey)) {
-        val chosen = declutterFolder
+    fun openDeclutter(
+        label: String,
+        source: List<MediaRecord>,
+        kind: String,
+        id: String,
+        filter: String = "",
+        sourceSort: String = "source-order"
+    ) {
+        if (source.isEmpty() || !grants.hasAny ||
+            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L) return
+        declutterItems = null
+        declutterPersistentScope = null
+        declutterSource = source
+        declutterSourceKind = kind
+        declutterSourceId = id
+        declutterSourceFilter = filter
+        declutterSourceSort = sourceSort
+        declutterFolder = label
+    }
+    // Freeze every entry source without re-sorting it. Fingerprinting is bounded
+    // and runs on Dispatchers.Default, keyed by full membership + revision + order.
+    LaunchedEffect(declutterFolder, declutterSource?.let(::CatalogSourceKey),
+        declutterSourceKind, declutterSourceId, declutterSourceFilter, declutterSourceSort) {
+        val label = declutterFolder
         val frozenCatalog = declutterSource
-        if (chosen != null && frozenCatalog != null) {
-            // This folder-only size sort stays off the Compose UI thread.
-            declutterItems = withContext(Dispatchers.Default) {
-                folderDeclutterDeck(frozenCatalog, chosen)
+        val kind = declutterSourceKind
+        val id = declutterSourceId
+        val filter = declutterSourceFilter
+        val sourceSort = declutterSourceSort
+        if (label != null && frozenCatalog != null && kind != null && id != null) {
+            val built = withContext(Dispatchers.Default) {
+                val deck = sourceDeclutterDeck(frozenCatalog)
+                val fingerprint = declutterSourceFingerprint(deck)
+                deck to declutterScopeKey(kind, id, filter, sourceSort,
+                    snapshot = fingerprint)
+            }
+            if (declutterFolder == label && declutterSource === frozenCatalog) {
+                declutterItems = built.first
+                declutterPersistentScope = built.second
             }
         }
     }
@@ -3294,17 +3334,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
       // Declutter is a regular themed page, not a forced-dark media viewer.
       Box(Modifier.fillMaxSize().background(AtlasPageColor)) {
         val itemsForReview = declutterItems
-        if (itemsForReview == null) {
+        val scopeForReview = declutterPersistentScope
+        if (itemsForReview == null || scopeForReview == null) {
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
                 contentAlignment = Alignment.Center) {
-                Text("Preparing largest files in selected folder…")
+                Text("Preparing this source-ordered review…")
             }
         } else {
             DeclutterScreen(
                 folder = folderForReview,
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
-                scopeKey = declutterScopeKey("album", folderForReview, sort = "size"),
+                scopeKey = scopeForReview,
                 keepStore = remember {
                     SharedPreferencesDeclutterKeepStore(
                         context.getSharedPreferences("atlas_declutter_keeps",
@@ -3959,11 +4000,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             val selected = selectedAlbum
                             if (route != null && route.relativePath.isNotBlank() &&
                                 route.relativePath.endsWith('/') && selected != null) {
-                                declutterItems = null
-                                // Already route-filtered on Dispatcher.Default.
-                                // The existing builder never expands its input.
-                                declutterSource = selected
-                                declutterFolder = route.relativePath
+                                openDeclutter(
+                                    label = route.relativePath,
+                                    source = selected,
+                                    kind = "album",
+                                    id = "${route.volumeName}:${route.relativePath}",
+                                    filter = albumSelectedFilter.name,
+                                    sourceSort = "${sort.key.name}:${sort.direction.name}"
+                                )
                             }
                         }
                     ) else emptyList(),
@@ -4315,6 +4359,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
                                     mediaSort = sort,
+                                    onDeclutterMonth = if (albumRoute == null) ({ monthHeader, monthItems ->
+                                        openDeclutter(
+                                            label = "Pictures · ${monthHeader.label}",
+                                            source = monthItems,
+                                            kind = "month",
+                                            id = monthHeader.stableKey,
+                                            filter = "pictures",
+                                            sourceSort = "${sort.key.name}:${sort.direction.name}"
+                                        )
+                                    }) else null,
                                     busy = busy || sortPending || albumSelectionPending || scopedPending,
                                     catalogueEpoch = publishedGallery.epoch,
                                     preserveScrollOnIncremental = publishedGallery.incremental && albumRoute == null,
@@ -4505,6 +4559,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             result = currentPhotoDna(photoDna, photoDnaTokens),
                             verifying = photoDnaVerifying,
                             onBack = { photoDnaOpen = false },
+                            onDeclutterSource = { sourceId, sourceItems ->
+                                openDeclutter("Photo DNA", sourceItems, "photo-dna",
+                                    sourceId, filter = "current Photo DNA grant",
+                                    sourceSort = "source-order")
+                            },
                             onOpenPhoto = { uri ->
                                 // Re-check the live grant and publication at click
                                 // time; the viewer only opens the current list.
@@ -4672,6 +4731,24 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             personBwFolderOnly = false
                             personEntryStartNs = android.os.SystemClock.elapsedRealtimeNanos()
                             personFilter = selectedPerson
+                        }
+                        if (searchActive && visible.isNotEmpty() && !busy &&
+                            !searchPending && !scopedPending) {
+                            OutlinedButton(
+                                onClick = {
+                                    openDeclutter(
+                                        label = "Search results",
+                                        source = visible,
+                                        kind = "search",
+                                        id = "${overviewScope.name}:${overviewQuery}:${searchFacets}",
+                                        filter = "library-search",
+                                        sourceSort = "${sort.key.name}:${sort.direction.name}"
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .testTag("atlas-search-declutter")
+                            ) { Text("Review these results with Declutter") }
                         }
                         // #644: at rest Search shows only the field, recents and
                         // suggestions; results appear once there is a query.

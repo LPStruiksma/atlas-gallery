@@ -21,6 +21,40 @@ class DeclutterProgressTest {
         try { declutterScopeKey("", "x"); fail() } catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun sourceFingerprintChangesForMembershipOrderOrMediaRevision() {
+        val source = listOf(media(1), media(2), media(3))
+        val fingerprint = declutterSourceFingerprint(source)
+        assertEquals(fingerprint, declutterSourceFingerprint(source.toList()))
+        assertNotEquals(fingerprint, declutterSourceFingerprint(source.reversed()))
+        assertNotEquals(fingerprint, declutterSourceFingerprint(source + media(4)))
+        assertNotEquals(fingerprint,
+            declutterSourceFingerprint(listOf(media(1, bytes = 99), media(2), media(3))))
+        val a = declutterScopeKey("month", "header:MONTH:2026-11",
+            filter = "pictures", snapshot = fingerprint)
+        val b = declutterScopeKey("month", "header:MONTH:2026-11",
+            filter = "pictures", snapshot = declutterSourceFingerprint(source + media(4)))
+        assertNotEquals(a, b)
+        assertTrue(a.startsWith("v2|"))
+    }
+
+    @Test fun eachSourceAndCurrentSortHasAnIndependentSnapshotScope() {
+        val source = sourceDeclutterDeck(listOf(media(1), media(2), media(3)))
+        val snapshot = declutterSourceFingerprint(source)
+        for (kind in listOf("album", "month", "search", "photo-dna")) {
+            val date = declutterScopeKey(kind, "source", filter = "current", sort = "date",
+                snapshot = snapshot)
+            val size = declutterScopeKey(kind, "source", filter = "current", sort = "size",
+                snapshot = snapshot)
+            assertNotEquals("$kind: a different active sort has its own source scope", date, size)
+        }
+        assertNotEquals(
+            declutterScopeKey("search", "term one", snapshot = snapshot),
+            declutterScopeKey("search", "term two", snapshot = snapshot))
+        assertNotEquals(
+            declutterScopeKey("photo-dna", "grant:family A", snapshot = snapshot),
+            declutterScopeKey("photo-dna", "grant:family B", snapshot = snapshot))
+    }
+
     @Test fun progressCountsOnlyKeepsThatStillMatchAndResumesAtFirstUnreviewed() {
         val source = (1L..5L).map { media(it) }
         val kept = setOf(source[0], source[1], source[3]).map(::declutterKeepIdentity).toSet()

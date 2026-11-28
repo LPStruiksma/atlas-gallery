@@ -90,8 +90,10 @@ signing-safe APK upgrade and backup**.
 
 ## Durable Keep and resume (TIDY-1A, #577)
 
-- **Only Keep persists.** A Keep is saved on the device, per review source
-  (today: the album folder, size-sorted), keyed by URI, size and modified time.
+- **Only Keep persists.** A Keep is saved on the device, per review source,
+  keyed by URI, size and modified time. Album review freezes the album's current
+  selected order; it no longer forces Largest. Month, Search and Photo DNA use
+  the exact source order presented by their existing host.
   Staged Trash choices, Skip, Android requests and confirmations are never
   saved: a staged item returns on the next review.
 - **Resume.** Reopening a source with saved Keeps asks *Resume review* /
@@ -105,5 +107,23 @@ signing-safe APK upgrade and backup**.
 - **Start again** clears that source's Keeps only after a confirmation.
 - Undo removes the saved Keep of the item it returns to review. The two
   Trash confirmations and the MediaStore re-query are unchanged.
-- Not yet built (TIDY-1A follow-ups, 1B, 1C): month, search and Photo DNA
-  entries, compare mode, recent-album filing.
+## Source-ordered entry points (TIDY-1B, #942)
+
+- **Pictures month:** the month header in the existing chronological month
+  overview opens exactly the media range behind that header, in its displayed
+  order. It does not rebuild the month by scanning the whole library.
+- **Search:** a Review action appears with active results. The source is the
+  current result list; Back returns to the same Search query, scope and facets.
+- **Photo DNA:** exact-byte families and near-match pairs offer a Review action.
+  Their members are mapped through the current grant-scoped Photo DNA result
+  before a deck is opened; no stale or missing record is silently substituted.
+- All entry points use the same URI-deduplicating source deck and the existing
+  Keep/resume flow. The source key contains a SHA-256 fingerprint of the frozen
+  deck's order, membership and each item's size/modified-time revision. A changed
+  source snapshot therefore starts a new source progress key; unchanged sources
+  resume their own Keeps. Album keys also include the active media filter and sort.
+- The resume choices are a bottom sheet (Resume / Start again / Not now); Start
+  again still opens the separate confirmation. Skip and staged Trash remain
+  transient, and the existing two-confirmation MediaStore Trash gate is unchanged.
+
+Compare mode and recent-album filing remain outside #942.
