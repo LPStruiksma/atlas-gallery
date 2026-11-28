@@ -1,6 +1,6 @@
 # Atlas filters (EDIT-7)
 
-Status: **original filter reference implementation and complete 14-look assets committed; independent proof and rendering integration still required.**
+Status: **original filter reference implementation and complete 14-look assets committed; renderer adapter and synthetic comparison test added; exact-head independent proof still required.**
 
 Unit: [EDIT-7 #725](https://github.com/LPStruiksma/atlas-gallery/issues/725) under [Editor #629](https://github.com/LPStruiksma/atlas-gallery/issues/629). Fourteen distinct Atlas looks use own parametric transforms, no Samsung LUT data, names, assets, packs or personal images. No UI is introduced (EDIT-10 owns it), and the existing `EditOperation.Filter(lutId, lutHash, strength)` schema is unchanged.
 
@@ -19,5 +19,7 @@ The CPU reference `AtlasLut.fromBytes` and `sample` interpolate trilinearly **in
 ## Acceptance and remaining independent proof
 
 - Python generator tests cover byte-identical regeneration, exact checked-in assets, 14 distinct looks, SHA-256 catalogue and aggregate size. JVM tests cover identity, strength zero and 0–100, trilinear accuracy, catalogue loading and tampering, synthetic Lab transfer and named private storage.
-- **Not yet claimed:** exact-head CI after the asset commit, Android compilation/JVM test execution, synthetic preview/skin-neutral evaluation, actual pipeline wiring for EDIT-2's GPU path, or measured GPU agreement (target ΔE ≤ 1). Don't call the feature shipped until these proofs and independent Review exist.
+- #743 supplied the reference implementation and assets; its historical CI is not evidence for this integration head.
+- Renderer integration: construct `FilterEditorAssets(context.assets::open, existingCustomStore, existingRasterAssets)` and pass it to both `PlanRenderer` and `EditorPreviewSurface`. The adapter uses the existing verified loaders, converts lattice samples to `Lut3D` in the same encoded-sRGB order and leaves linear-P3/out-of-cube handling unchanged. A bundled ID accepts no hash or its exact catalogue hash; custom IDs require their matching content hash. Unknown, missing and corrupt assets resolve to null (strict export refuses; preview retains EDIT-2's documented lenient behavior). The instance is render-thread confined, caches immutable bundled LUTs, and rechecks private content before reuse. No editor-shell or Save integration is claimed.
+- `FilterRendererTest` uses the real APK catalogue and a derived private LUT on 14 synthetic neutral, skin-like and saturated swatches. It compares all rendered pixels with CIE76 (Euclidean D65 Lab, decoded from sRGB 8-bit readback), at zero, half, full and each catalogue preview strength; the maximum must be ≤ 1, not just the mean. It also checks the independent reference sampler within one 8-bit step and logs the actual preview-surface swatch RGBs and asset IDs/hashes with `ATLAS_EDIT7`. These logs are numerical preview evidence, not a visual contact sheet. No measured result or visual approval is claimed before non-skipped exact-head Android CI and independent review.
 - The Codex first-stage auto-apply limit was text-only and excluded binary assets. The follow-up binary commit is ordinary Dev work, not another Codex patch; no additional `@codex` task is needed.
