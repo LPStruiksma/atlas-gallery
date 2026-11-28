@@ -1,0 +1,78 @@
+name: ATLAS isolated API29 process-exit observation (never merge)
+on:
+  pull_request:
+    types: [labeled]
+    paths:
+      - 'scripts/ci_share_exit_observation.sh'
+      - '.github/workflows/share-exit-observation.yml'
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+concurrency:
+  group: ${{ github.event.label.name == 'share-proof:run' && format('share-proof-observation-pr-{0}', github.event.pull_request.number) || format('share-proof-observation-unrelated-{0}', github.run_id) }}
+  cancel-in-progress: false
+jobs:
+  share-exit-observation-admission:
+    name: share-exit-observation-admission
+    if: ${{ github.event.label.name == 'share-proof:run' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      ATLAS_EMULATOR_API: '29'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify script syntax and exact execution approval / one-run admission
+        run: |
+          bash -n scripts/ci_share_exit_observation.sh
+          bash scripts/ci_share_exit_observation.sh --admission
+      - uses: actions/checkout@v4
+        with:
+          ref: 6c2c3da9ad742aed92fb44de564688cbb3c869e7
+          path: pinned-share-input
+          persist-credentials: false
+      - name: Verify unchanged image helpers
+        run: |
+          set -euo pipefail
+          test "$(git -C pinned-share-input rev-parse HEAD)" = 6c2c3da9ad742aed92fb44de564688cbb3c869e7
+          cmp -s scripts/ci_enable_kvm.sh pinned-share-input/scripts/ci_enable_kvm.sh
+          cmp -s scripts/ci_install_emulator_image.sh pinned-share-input/scripts/ci_install_emulator_image.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Enable KVM
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Install system image
+        run: bash scripts/ci_install_emulator_image.sh
+      - name: One isolated synthetic observation (not product acceptance)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/ci_share_exit_observation.sh --observe
+      - name: Recheck live head and admission after observation
+        if: always()
+        run: bash scripts/ci_share_exit_observation.sh --admission
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: share-exit-observation-api29
+          path: share-exit-evidence/observation.json
+          if-no-files-found: warn
+          retention-days: 7
