@@ -1,0 +1,14 @@
+{
+  "note": "Synthetic query points near public landmarks (town centres offset a few hundred metres), plus points that must find no Dutch place. No real user coordinates.",
+  "cases": [
+    {"id": "town-utrecht", "kind": "nl-town", "lat": 52.0930, "lon": 5.1190, "expect_any": ["Utrecht"]},
+    {"id": "town-groningen", "kind": "nl-town", "lat": 53.2210, "lon": 6.5630, "expect_any": ["Groningen"]},
+    {"id": "town-maastricht", "kind": "nl-town", "lat": 50.8500, "lon": 5.6890, "expect_any": ["Maastricht"]},
+    {"id": "town-small-vlieland", "kind": "nl-town", "lat": 53.2960, "lon": 5.0560, "expect_any": ["Oost-Vlieland", "Vlieland"]},
+    {"id": "coast-den-helder", "kind": "coast", "lat": 52.9590, "lon": 4.7500, "expect_any": ["Den Helder"]},
+    {"id": "sea-north-sea-offshore", "kind": "coast", "lat": 52.9, "lon": 3.9, "expect_any": []},
+    {"id": "border-germany-inland", "kind": "border", "lat": 52.6, "lon": 9.0, "expect_any": []},
+    {"id": "border-belgium-inland", "kind": "border", "lat": 50.9, "lon": 2.9, "expect_any": []},
+    {"id": "label-en-nl-den-haag", "kind": "label", "lat": 52.0780, "lon": 4.3100, "expect_any": ["The Hague", "Den Haag", "'s-Gravenhage"]}
+  ]
+}
