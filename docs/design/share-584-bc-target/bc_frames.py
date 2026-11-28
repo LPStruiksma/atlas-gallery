@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""SHARE-1BC-E (#1118): focused wallpaper/copy evidence for Atlas-owned states.
+"""SHARE-1BC-E2 (#1128, after #1118): focused wallpaper/copy evidence for Atlas-owned states.
 
 Self-contained: draws every frame from deterministic shapes, writes SVG,
 geometry.json, PNG and annotated geometry overlays, then verifies them.
 
     python3 docs/design/share-584-bc-target/bc_frames.py --build --render --verify
 
-Only the viewer More menu (with Set as wallpaper and Copy image) and the
-Atlas-owned B/C error dialogs are drawn. Android owns the wallpaper picker and
+Drawn: the viewer More menu (with Set as wallpaper and Copy image) for each
+eligibility case, the restricted (EXTERNAL, SECURE) and video viewers where B/C
+are never offered, and the Atlas-owned B/C error dialogs. Android owns the wallpaper picker and
 the clipboard confirmation; they are not drawn here (see the v3 baseline).
 
 This is a synthetic design proposal. It is not an Android screenshot, a Samsung
@@ -38,7 +39,12 @@ LABEL = round(14 * DP, 2)
 # Material 3 DropdownMenu limits (dp, not scaled by font size)
 MENU_MIN_W = 112 * DP
 MENU_MAX_W = 280 * DP
-MENU_EDGE_MARGIN = 48 * DP   # vertical margin the popup keeps from the window edge
+# Popup placement (#1128 finding 3). The 48 dp margin is VERTICAL ONLY and is measured
+# from the safe window (window minus system-bar/cutout insets): the insets are already
+# outside the safe window and are not added a second time. Horizontally the popup stays
+# inside the safe window with at least 8 dp between it and either safe edge.
+MENU_EDGE_MARGIN = 48 * DP   # vertical: top >= safe top + 48 dp, bottom <= safe bottom - 48 dp
+MENU_SIDE_GAP = 8 * DP       # horizontal: >= 8 dp inside the safe left and right edges
 MENU_PAD_Y = 8 * DP          # list padding above the first and below the last item
 ITEM_PAD_X = 50              # label inset (as v3)
 ITEM_PAD_Y = 47.6            # per side; 100 % item = 150 px as in v3
@@ -70,17 +76,88 @@ MENU_ITEMS = [
     ('set-wallpaper', 'Set as wallpaper', 'proposed; still images only'),
     ('copy-image', 'Copy image', 'proposed; still images only'),
 ]
+# Viewer access modes as on live main (GalleryViewer.kt ViewerAccess, ExternalViewerHost.kt).
+# ``host_actions``: whether the host wires onAiEdit/onEdit/swap/share at all. Only the
+# library host does; ExternalViewerHost passes none of them.
+ACCESS = {
+    'LIBRARY': {'details': True, 'back': 'Back to gallery', 'host_actions': True},
+    'EXTERNAL': {'details': True, 'back': 'Back', 'host_actions': False},
+    'SECURE': {'details': False, 'back': 'Back to camera', 'host_actions': False},
+}
+ELIG_KEYS = ('access', 'media', 'readable', 'ai_edit', 'swap', 'wallpaper', 'copy')
+
+
+def menu_items(e):
+    """Items the More menu shows for one eligibility case ``e`` (dict with ELIG_KEYS).
+
+    - Video: unchanged from live main, no More item at all.
+    - AI Edit / Swap person: existing gating and order; host-wired, so LIBRARY only;
+      Swap person only directly under a shown AI Edit.
+    - Set as wallpaper / Copy image: LIBRARY only, readable still content URI, and each
+      action's own eligibility (MIME the handoff accepts), independently of each other and
+      of AI Edit. EXTERNAL and SECURE never offer them, even for a readable still or a
+      caller-granted URI: a caller's read grant is not Atlas's to pass on (#573).
+    More is shown only when this list is non-empty.
+    """
+    if e['media'] != 'still':
+        return []
+    lib = e['access'] == 'LIBRARY' and ACCESS[e['access']]['host_actions']
+    out = []
+    if lib and e['ai_edit']:
+        out.append('ai-edit')
+        if e['swap']:
+            out.append('swap-person')
+    if lib and e['readable'] and e['wallpaper']:
+        out.append('set-wallpaper')
+    if lib and e['readable'] and e['copy']:
+        out.append('copy-image')
+    return out
+
+
+def elig(access='LIBRARY', media='still', readable=True, ai_edit=True, swap=True, wallpaper=True, copy=True):
+    return {'access': access, 'media': media, 'readable': readable, 'ai_edit': ai_edit, 'swap': swap,
+            'wallpaper': wallpaper, 'copy': copy}
+
+
+# What happens when an item is activated: everything is re-checked against the live
+# state at that moment and fails closed. Verified to exist and to name each case.
+ACTIVATION_RULES = [
+    {'when': 'access is no longer LIBRARY when a B/C item is activated (viewer re-hosted, secure review)',
+     'outcome': 'menu closes; no action, no dialog, nothing written'},
+    {'when': 'current item changed since the menu opened (swipe, deletion, refresh)',
+     'outcome': 'menu closes; no action; never acts on the new or a neighbouring item'},
+    {'when': 'Set as wallpaper: URI unreadable or grant revoked before the handoff',
+     'outcome': 'B-unsupported dialog; nothing was changed'},
+    {'when': 'Set as wallpaper: no activity resolves ACTION_ATTACH_DATA',
+     'outcome': 'B-no-handler dialog; nothing was changed'},
+    {'when': 'Copy image: URI unreadable or grant revoked before ClipData is set (clipboard not touched)',
+     'outcome': 'C-revoked dialog; the clipboard was not changed (known: no write was attempted)'},
+    {'when': 'Copy image: clipboard service failed or the commit state is unknown after the write call',
+     'outcome': 'C-unconfirmed dialog; no claim about the clipboard; prior clipboard content is never read '
+                'or restored; no automatic retry'},
+    {'when': 'any failure',
+     'outcome': 'fail closed: no fallback photo (no cached bitmap, thumbnail or other item is used instead)'},
+]
+
 ERRORS = {
-    # stage: (flow, title, body, case)
+    # stage: (flow, title, body, case, clipboard)
     'no-handler': ('B', 'No app can set wallpaper', 'Nothing was changed.',
-                   'missing handler: no activity resolves ACTION_ATTACH_DATA'),
+                   'missing handler: no activity resolves ACTION_ATTACH_DATA', 'untouched'),
     'unsupported': ('B', "Can't use this file as wallpaper",
                     'The format is not supported or the photo is no longer available. Nothing was changed.',
-                    'unsupported still, or read grant revoked before handoff'),
+                    'unsupported still, or read grant revoked before handoff', 'untouched'),
     'revoked': ('C', "Couldn't copy image",
                 "The photo can't be read right now. The clipboard was not changed.",
-                'read grant revoked or URI unreadable before ClipData is set'),
+                'read grant revoked or URI unreadable before ClipData is set (no clipboard write attempted)',
+                'unchanged (known: failure before any write)'),
+    'unconfirmed': ('C', "Couldn't copy image",
+                    "Atlas couldn't confirm the image was copied. Try again.",
+                    'clipboard service failure, or commit state unknown after the write call',
+                    'unknown (not read, not restored, not retried)'),
 }
+# Words a dialog may only use when the clipboard state is known.
+UNCHANGED_CLAIMS = ('not changed', 'unchanged', 'was not', 'nothing was')
+SUCCESS_CLAIMS = ('image copied', 'copied to', 'copied!', 'done')
 
 _fonts = {}
 
@@ -142,6 +219,7 @@ class Frame:
         self.body, self.controls, self.inert = [], [], []
         self.modal = self.dismiss = self.focus_ring = self.photo_px = self.scroll = None
         self.status, self.clips = {}, 0
+        self.menu_limits = None
 
     # primitives
     def rect(self, x, y, w, h, fill, rx=0, opacity=None, stroke=None, sw=None):
@@ -221,24 +299,36 @@ class Frame:
             '<rect x="270" y="429" width="45" height="390" fill="#FFFFFF"/>'
             '<path d="M738 884 L738 689 L828 884 Z" fill="#FFFFFF"/></svg>')
 
-    def header(self, back, more, inert):
-        for cid, rect, label in (('back', back, 'Back'), ('more', more, 'More photo actions')):
+    def header(self, back, trailing, inert, back_label='Back'):
+        """Back plus the trailing controls in live-main order (GalleryViewer.kt L950-980):
+        ``more`` (when a menu item applies), then ``details`` (when the access mode has
+        Details). They are independent: a library still shows both."""
+        pairs = [('back', back, back_label)]
+        for cid, rect in trailing:
+            pairs.append((cid, rect, 'More photo actions' if cid == 'more' else 'Photo or video details'))
+        for cid, rect, label in pairs:
             x, y, w, h = rect
             self.rect(x, y, w, h, VIEWER['pill'], rx=50)
             if cid == 'back':
                 self.body.append(f'<path d="M{f(x+w/2+14)} {f(y+h/2-28)} L{f(x+w/2-16)} {f(y+h/2)} '
                                  f'L{f(x+w/2+14)} {f(y+h/2+28)}" fill="none" stroke="#FFFFFF" '
                                  f'stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>')
-            else:
+            elif cid == 'more':
                 for i in (-26, 0, 26):
                     self.circle(x + w / 2 + i, y + h / 2, 8, '#FFFFFF')
+            else:  # outlined info glyph
+                cx, cy = x + w / 2, y + h / 2
+                self.circle(cx, cy, 30, 'none', stroke='#FFFFFF', sw=7)
+                self.circle(cx, cy - 14, 5, '#FFFFFF')
+                self.rect(cx - 3.5, cy - 4, 7, 24, '#FFFFFF', rx=3)
             self.control(cid, 'button', label, rect, inert=inert)
 
-    def slab(self, x, y, inert):
-        w, h = 650, 145
+    def slab(self, x, y, inert, labels=('Favourite', 'Edit', 'Share', 'Delete')):
+        slot = 650 / 4
+        w, h = slot * len(labels), 145
+        x += round((650 - w) / 2)
         self.rect(x, y, w, h, VIEWER['slab'], rx=67)
-        slot = w / 4
-        for i, label in enumerate(('Favourite', 'Edit', 'Share', 'Delete')):
+        for i, label in enumerate(labels):
             cx = x + slot * i + slot / 2
             shown, size = ('♡', 54) if label == 'Favourite' else (label, 31)
             self.text(cx, y + 92, shown, size, VIEWER['on'], 'bold', 'middle', maxw=slot - 12)
@@ -258,19 +348,57 @@ class Frame:
         self.control('filmstrip-current', 'button', 'Current photo in filmstrip',
                      [cx - 70, y - 7, 140, 154], inert=inert)
 
-    def viewer(self, inert=True):
+    def viewer(self, inert=True, access='LIBRARY', media='still', more=True, filmstrip=None):
+        """Viewer chrome as host-wired on live main for ``access``/``media``.
+
+        LIBRARY still: Back, More (when a menu item applies), filmstrip, slab.
+        LIBRARY video: Back, Details, filmstrip, slab without Edit (PhotoEditorHandoff is
+        still-only). EXTERNAL: Back, Details; no slab (no favourite/edit/share/trash), no
+        More; single caller item has no filmstrip. SECURE: Back to camera only.
+        Find person / Find similar header icons are host-wired search hooks outside this
+        unit and are not drawn in any frame (specified, unchanged)."""
+        a = ACCESS[access]
+        lib = access == 'LIBRARY'
+        trailing_ids = (['more'] if (more and media == 'still') else []) + (['details'] if a['details'] else [])
+        if filmstrip is None:
+            filmstrip = lib
+        slab = None
+        if lib:
+            slab = ('Favourite', 'Edit', 'Share', 'Delete') if media == 'still' else ('Favourite', 'Share', 'Delete')
         self.rect(0, 0, self.w, self.h, VIEWER['ground'])
         if self.orientation == 'portrait':
             self.art(90, 280, 900, 1300)
-            self.header([24, 137, 144, 138], [890, 137, 166, 138], inert)
-            self.control('photo', 'image', ITEM['label'], self.photo_px, inert=inert)
-            self.filmstrip(540, 1860, inert)
-            self.slab(215, 2042, inert)
+            slots = [[890, 137, 166, 138], [714, 137, 166, 138]]   # right to left
+            trailing = list(zip(trailing_ids, reversed(slots[:len(trailing_ids)])))
+            self.header([24, 137, 144, 138], trailing, inert, a['back'])
+            self.control('photo', 'image', ITEM['label'] if media == 'still' else 'Synthetic lake video',
+                         self.photo_px, inert=inert)
+            if media == 'video':
+                self.play(540, 930, inert)
+            if filmstrip:
+                self.filmstrip(540, 1860, inert)
+            if slab:
+                self.slab(215, 2042, inert, slab)
         else:
-            self.art(330, 90, 900, 800)
-            self.header([145, 90, 144, 138], [145, 250, 144, 138], inert)
-            self.control('photo', 'image', ITEM['label'], self.photo_px, inert=inert)
-            self.slab(455, 915, inert)
+            # with a filmstrip the photo yields height to it (strip above the slab, as on main)
+            self.art(330, 80, 900, 620) if filmstrip else self.art(330, 90, 900, 800)
+            slots = [[145, 250, 144, 138], [145, 410, 144, 138]]   # top to bottom
+            self.header([145, 90, 144, 138], list(zip(trailing_ids, slots)), inert, a['back'])
+            self.control('photo', 'image', ITEM['label'] if media == 'still' else 'Synthetic lake video',
+                         self.photo_px, inert=inert)
+            if media == 'video':
+                px, py, pw, ph = self.photo_px
+                self.play(px + pw / 2, py + ph / 2, inert)
+            if filmstrip:
+                self.filmstrip(780, 735, inert)
+            if slab:
+                self.slab(455, 915, inert, slab)
+
+    def play(self, cx, cy, inert):
+        self.circle(cx, cy, 90, VIEWER['pill'])
+        self.body.append(f'<path d="M{f(cx-30)} {f(cy-46)} L{f(cx+48)} {f(cy)} L{f(cx-30)} {f(cy+46)} Z" '
+                         f'fill="#FFFFFF"/>')
+        self.control('play', 'button', 'Play video', [cx - 90, cy - 90, 180, 180], inert=inert)
 
     def svg(self):
         ring = ''
@@ -295,12 +423,12 @@ class Frame:
             'orientation': self.orientation, 'font_scale': self.scale,
             'px': [self.w, self.h], 'insets_ltrb_px': self.insets, 'density_px_per_dp': DENSITY,
             'item': ITEM, 'photo_px': r1(self.photo_px), 'photo_visible_fraction': self.photo_visible(),
-            'modal_px': r1(self.modal), 'scroll': self.scroll, 'dismiss': self.dismiss,
+            'modal_px': r1(self.modal) if self.modal else None, 'scroll': self.scroll, 'dismiss': self.dismiss,
             'controls': self.controls, 'focus_order': [c['id'] for c in self.controls],
             'inert_background_controls': [c['id'] for c in self.inert],
             'focus_ring_px': r1(self.focus_ring) if self.focus_ring else None,
             'returns_to': f'same viewer item ({ITEM["id"]}), viewer state unchanged',
-            'status': self.status,
+            'status': self.status, 'menu_limits': self.menu_limits,
         }
 
 
@@ -318,10 +446,17 @@ def menu_layout(items, s):
     return size, w, rows
 
 
-def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=False):
-    """``identity``: at font scale >= 1.5 the menu opens with a non-interactive row
-    (thumbnail + "This photo") because the larger popup hides most of the photo."""
+def frame_menu(name, theme, orientation, scale, e, scroll='top'):
+    """More menu for eligibility case ``e``. At font scale >= 1.5 the menu opens with a
+    pinned non-interactive row (thumbnail + "This photo") because the larger popup hides
+    most of the photo."""
+    identity = scale >= 1.5
+    ids = menu_items(e)
+    if not ids:
+        raise ValueError(f'{name}: no item applies, so there is no More menu to draw')
+    items = [m for m in MENU_ITEMS if m[0] in ids]
     fr = Frame(name, 'BC', 'menu', theme, orientation, scale)
+    fr.args = ('menu', name, theme, orientation, scale, e)
     fr.viewer(inert=True)
     t = fr.t
     size, w, rows = menu_layout(items, scale)
@@ -330,17 +465,35 @@ def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=Fa
         ident_lines = wrap('This photo', size, w - 2 * ITEM_PAD_X - 135 - 24, 'bold')
         ident_h = max(135, len(ident_lines) * size * 1.3) + 2 * 24
     content_h = 2 * MENU_PAD_Y + ident_h + sum(r[4] for r in rows)
+    L, T, R, B = fr.insets
     if orientation == 'portrait':
         x, pref_top = 1056 - w, 290          # under the More button, right aligned
     else:
         x, pref_top = 305, 250               # beside the More button, as in v3
-    top_limit, bottom_limit = MENU_EDGE_MARGIN, fr.h - MENU_EDGE_MARGIN
-    top = pref_top
+    # horizontal: inside the safe window, >= 8 dp from each safe edge (no 48 dp here)
+    safe_l, safe_r = L + MENU_SIDE_GAP, fr.w - R - MENU_SIDE_GAP
+    if w > safe_r - safe_l:
+        raise ValueError(f'{name}: menu {w:.0f}px cannot fit the safe width; reflow needed')
+    x = min(max(x, safe_l), safe_r - w)
+    # vertical: 48 dp from the safe window edges (insets counted once, not twice)
+    top_limit, bottom_limit = T + MENU_EDGE_MARGIN, fr.h - B - MENU_EDGE_MARGIN
+    top = max(pref_top, top_limit)
     if top + content_h > bottom_limit:       # popup shifts up first, then scrolls
         top = max(top_limit, bottom_limit - content_h)
     h = min(content_h, bottom_limit - top)
+    fr.menu_limits = {
+        'rule': '48 dp vertical margin from the safe window (insets not double counted); '
+                'horizontally inside the safe window with >= 8 dp to each safe edge; width 112-280 dp',
+        'safe_window_px': [L, T, fr.w - L - R, fr.h - T - B],
+        'top_limit_px': round(top_limit, 1), 'bottom_limit_px': round(bottom_limit, 1),
+        'left_limit_px': round(safe_l, 1), 'right_limit_px': round(safe_r, 1),
+        'gaps_dp': {'top': round((top - T) / DP, 2), 'bottom': round((fr.h - B - top - h) / DP, 2),
+                    'left': round((x - L) / DP, 2), 'right': round((fr.w - R - x - w) / DP, 2)},
+        'width_dp': round(w / DP, 2),
+    }
     overflow = content_h - h
-    dy = 0 if scroll == 'top' else overflow
+    dy = 0 if scroll == 'top' else overflow if scroll == 'end' else min(float(scroll), overflow)
+    position = scroll if scroll in ('top', 'end') else 'middle'
     fr.body.append('<g class="modal">')
     fr.rect(x, top, w, h, t['mist'] if theme == 'dark' else t['ground'], rx=44, stroke=t['ink2'], sw=3)
     fr.modal = [x, top, w, h]
@@ -359,7 +512,7 @@ def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=Fa
     if overflow > 0:
         fr.clip_open(viewport, dy)
         fr.scroll = {'container': 'menu rows (identity header pinned)', 'content_px': round(content_h, 1),
-                     'viewport_px': r1(viewport), 'offset_px': round(dy, 1), 'position': scroll,
+                     'viewport_px': r1(viewport), 'offset_px': round(dy, 1), 'position': position,
                      'reveal': 'focus or a swipe scrolls the rows; every item can be fully shown; '
                                'a partly shown row is a scroll cue only: a tap or focus scrolls it fully '
                                'into view and never activates it'}
@@ -377,7 +530,7 @@ def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=Fa
     fr.dismiss = 'Tap outside the menu or system Back closes it with no action; focus returns to More'
     fr.status = {'menu_items': [{'id': c, 'label': l, 'origin': o} for c, l, o in items],
                  'menu_width_px': round(w, 1), 'menu_width_rule': '112-280 dp; labels wrap at 280 dp',
-                 'eligibility': 'still image; Swap person only when eligible; More hidden when no item applies'}
+                 'eligibility': e, 'expected_items': ids}
     first = fr.controls[0]
     if first.get('rect_px'):
         fr.focus(first['rect_px'], pad=0)
@@ -399,15 +552,35 @@ frame_menu_c = frame_menu
 
 
 # ---------------------------------------------------------------------------
+# Viewer without a More menu (restricted access, video): B/C never offered
+# ---------------------------------------------------------------------------
+def frame_viewer(name, orientation, e):
+    fr = Frame(name, 'V', 'viewer', 'dark', orientation, 1)
+    fr.args = ('viewer', name, orientation, e)
+    if menu_items(e):
+        raise ValueError(f'{name}: a menu item applies; draw it with frame_menu')
+    fr.viewer(inert=False, access=e['access'], media=e['media'], more=False,
+              filmstrip=e['access'] == 'LIBRARY')
+    fr.body.append('<g>')  # svg() closes one group
+    fr.dismiss = {'LIBRARY': 'Back returns to the gallery grid',
+                  'EXTERNAL': 'Back finishes the Activity and returns to the calling app',
+                  'SECURE': 'Back finishes the Activity and returns to the camera'}[e['access']]
+    fr.status = {'eligibility': e, 'expected_items': [], 'more_shown': False,
+                 'theme_note': 'viewer ground is always black; ExternalViewerHost forces the dark theme',
+                 'font_scale_note': 'icon-only chrome; no text grows with font scale in this state'}
+    return fr
+
+# ---------------------------------------------------------------------------
 # Error dialogs (Atlas-owned)
 # ---------------------------------------------------------------------------
 def frame_error(stage, theme, orientation, scale, scroll='top'):
-    flow, title, body, case = ERRORS[stage]
+    flow, title, body, case, clip = ERRORS[stage]
     suffix = '' if scale == 1 else '-200'
     name = f'{flow}-{stage}-{theme}{suffix}' + ('-landscape' if orientation == 'landscape' else '')
     if scroll == 'end':
         name += '-scrolled'
     fr = Frame(name, flow, stage, theme, orientation, scale)
+    fr.args = ('error', stage, theme, orientation, scale)
     fr.viewer(inert=True)
     fr.rect(0, 0, fr.w, fr.h, '#000000', opacity=0.55)
     t, s = fr.t, scale
@@ -460,18 +633,48 @@ def frame_error(stage, theme, orientation, scale, scroll='top'):
             'middle', maxw=inner - 24)
     fr.control('ok', 'button', 'OK', bx, dismiss=True)
     fr.dismiss = 'OK or system Back returns to the same viewer item; nothing is changed'
-    fr.status = {'case': case, 'changed': 'nothing (wallpaper, clipboard and file untouched)',
-                 'atlas_owned': True}
+    fr.status = {'case': case, 'atlas_owned': True, 'clipboard': clip,
+                 'changed': ('unknown for the clipboard; wallpaper and file untouched' if clip.startswith('unknown')
+                             else 'nothing (wallpaper, clipboard and file untouched)'),
+                 'reads_or_restores_prior_clipboard': False, 'automatic_retry': False,
+                 'returns_focus_to': 'same viewer item'}
     return fr
 
 
 # ---------------------------------------------------------------------------
+# Library eligibility variants drawn at 200 % (name part -> case).
+MENU_VARIANTS = {
+    'onlycopy': elig(wallpaper=False),                # one B/C eligible: Copy image, not wallpaper
+    'existingonly': elig(wallpaper=False, copy=False),  # B/C both ineligible: existing actions only
+}
+# Restricted and video viewers: no More, B/C never offered (case -> name).
+VIEWER_CASES = {
+    'V-external-still': elig(access='EXTERNAL'),      # readable still, caller-granted URI
+    'V-secure-still': elig(access='SECURE'),          # readable still from secure camera review
+    'V-library-video': elig(media='video'),           # video: More stays hidden as today
+}
+
+
+def eligibility_matrix():
+    """Every access x media x readability x per-action combination and its menu."""
+    rows = []
+    for access in ACCESS:
+        for media in ('still', 'video'):
+            for readable in (True, False):
+                for ai in (True, False):
+                    for swap in (True, False):
+                        for wall in (True, False):
+                            for cp in (True, False):
+                                e = elig(access, media, readable, ai, swap, wall, cp)
+                                items = menu_items(e)
+                                rows.append({**e, 'items': items, 'more': bool(items)})
+    return rows
+
+
 def build():
     frames = []
     add = frames.append
-    full = MENU_ITEMS
-    no_swap = [m for m in MENU_ITEMS if m[0] != 'swap-person']
-    no_ai = [m for m in MENU_ITEMS if m[0] not in ('ai-edit', 'swap-person')]
+    full = elig()
     # menu: 100 % baselines
     add(frame_menu_c('BC-menu-light', 'light', 'portrait', 1, full))
     add(frame_menu_c('BC-menu-dark', 'dark', 'portrait', 1, full))
@@ -479,22 +682,44 @@ def build():
     add(frame_menu_c('BC-menu-dark-landscape', 'dark', 'landscape', 1, full))
     # menu: 200 %
     for theme in ('light', 'dark'):
-        add(frame_menu_c(f'BC-menu-{theme}-200', theme, 'portrait', 2, full, identity=True))
-        add(frame_menu_c(f'BC-menu-{theme}-200-landscape', theme, 'landscape', 2, full, identity=True))
-        add(frame_menu_c(f'BC-menu-{theme}-200-landscape-scrolled', theme, 'landscape', 2, full, 'end',
-                         identity=True))
+        add(frame_menu_c(f'BC-menu-{theme}-200', theme, 'portrait', 2, full))
+        add(frame_menu_c(f'BC-menu-{theme}-200-landscape', theme, 'landscape', 2, full))
     # eligibility variants at 200 %
-    add(frame_menu_c('BC-menu-noswap-light-200', 'light', 'portrait', 2, no_swap, identity=True))
-    add(frame_menu_c('BC-menu-noaiedit-dark-200', 'dark', 'portrait', 2, no_ai, identity=True))
+    add(frame_menu_c('BC-menu-noswap-light-200', 'light', 'portrait', 2, elig(swap=False)))
+    add(frame_menu_c('BC-menu-noaiedit-dark-200', 'dark', 'portrait', 2, elig(ai_edit=False)))
+    for var, e in MENU_VARIANTS.items():
+        for theme in ('light', 'dark'):
+            add(frame_menu_c(f'BC-menu-{var}-{theme}-200', theme, 'portrait', 2, e))
+            add(frame_menu_c(f'BC-menu-{var}-{theme}-200-landscape', theme, 'landscape', 2, e))
+    # restricted access and video: no More, no B/C
+    for name, e in VIEWER_CASES.items():
+        add(frame_viewer(name, 'portrait', e))
+        add(frame_viewer(name + '-landscape', 'landscape', e))
     # errors
     for stage in ERRORS:
         for theme in ('light', 'dark'):
             add(frame_error(stage, theme, 'portrait', 1))
+            if stage == 'unconfirmed':
+                add(frame_error(stage, theme, 'landscape', 1))
             add(frame_error(stage, theme, 'portrait', 2))
             add(frame_error(stage, theme, 'landscape', 2))
+    # every scrolling surface also gets its scrolled-to-end frame
     for fr in list(frames):
-        if fr.scroll and fr.flow != 'BC' and fr.scroll['position'] == 'top':
-            add(frame_error(fr.stage, fr.theme, fr.orientation, fr.scale, 'end'))
+        if fr.scroll and fr.scroll['position'] == 'top':
+            if fr.flow == 'BC':
+                _, name, theme, orientation, scale, e = fr.args
+                end = frame_menu_c(name + '-scrolled', theme, orientation, scale, e, 'end')
+                add(end)
+                # a tall row that neither end shows whole gets a mid-scroll frame where it is whole
+                hidden = {c['id'] for c in fr.controls if c.get('visibility') in ('partial', 'offscreen')}
+                missed = [c for c in end.controls if c['id'] in hidden and c.get('visibility') != 'full']
+                if missed:
+                    vp = end.scroll['viewport_px']
+                    cx, cy, cw, ch = missed[0]['content_rect_px']
+                    add(frame_menu_c(name + '-scrolled-mid', theme, orientation, scale, e,
+                                     cy + ch - (vp[1] + vp[3]) + 1))
+            else:
+                add(frame_error(fr.stage, fr.theme, fr.orientation, fr.scale, 'end'))
     return frames
 
 
@@ -511,10 +736,17 @@ def write(frames):
     for fr in frames:
         (svg_dir / f'{fr.name}.svg').write_text(fr.svg(), encoding='utf-8')
     geometry = {
-        'schema': 1, 'version': 'SHARE-1BC-E (#1118)',
+        'schema': 2, 'version': 'SHARE-1BC-E2 (#1128)',
         'source': 'synthetic coordinates from bc_frames.py; not S24+ runtime measurement',
         'density_px_per_dp': DENSITY, 'min_hit_px': MIN_HIT, 'min_photo_visible': MIN_PHOTO_VISIBLE,
-        'palette': PALETTE, 'frames': [fr.geometry() for fr in frames],
+        'palette': PALETTE,
+        'menu_limits_rule': {'vertical_margin_dp': 48, 'vertical_margin_from': 'safe window (insets counted once)',
+                             'horizontal_min_gap_dp': 8, 'horizontal_containment': 'safe window',
+                             'width_dp': [112, 280], 'min_row_dp': 48},
+        'access_modes': ACCESS,
+        'eligibility_matrix': eligibility_matrix(),
+        'activation_rules': ACTIVATION_RULES,
+        'frames': [fr.geometry() for fr in frames],
     }
     (ROOT / 'geometry.json').write_text(json.dumps(geometry, indent=1, ensure_ascii=False) + '\n',
                                         encoding='utf-8')
@@ -644,10 +876,23 @@ def verify_frame(g, svg, png, bg, palette, errors):
     ids = [c['id'] for c in controls]
     if g['focus_order'] != ids or len(set(ids)) != len(ids):
         errors.append(f'{name}: focus order does not list the active controls exactly once')
-    if not g['inert_background_controls'] or set(g['inert_background_controls']) & set(ids):
-        errors.append(f'{name}: viewer behind the surface is not isolated from focus')
     if not g['dismiss']:
         errors.append(f'{name}: no declared dismissal')
+    if g['flow'] == 'V':
+        checks += verify_viewer(g, controls, ids, safe, errors)
+        return checks, ratios, sizes
+    if not g['inert_background_controls'] or set(g['inert_background_controls']) & set(ids):
+        errors.append(f'{name}: viewer behind the surface is not isolated from focus')
+    # the library still behind every menu/dialog keeps its existing chrome: More AND Details,
+    # filmstrip (both orientations) and slab
+    missing = {'back', 'more', 'details', 'filmstrip-current', 'slab-edit'} - set(g['inert_background_controls'])
+    if missing:
+        errors.append(f'{name}: library viewer behind the surface lacks {sorted(missing)}')
+    # margins and containment are measured on the drawn SVG surface, not only on metadata
+    surf = next((n for n, _, m, _, _ in walk(svg) if m and n.tag.replace(NS, '') == 'rect'), None)
+    if surf is None or any(abs(float(surf.get(k)) - v) > 0.11 for k, v in
+                           zip(('x', 'y', 'width', 'height'), g['modal_px'])):
+        errors.append(f'{name}: drawn surface rect differs from modal_px')
     if not inside(g['modal_px'], safe) and g['flow'] != 'BC':
         errors.append(f'{name}: dialog leaves the safe area')
     visible_tap = []
@@ -682,8 +927,16 @@ def verify_frame(g, svg, png, bg, palette, errors):
         order = [m[0] for m in MENU_ITEMS]
         if labels != [i for i in order if i in labels]:
             errors.append(f'{name}: menu order {labels} breaks AI Edit, Swap person, Set as wallpaper, Copy image')
-        if not {'set-wallpaper', 'copy-image'} <= set(labels):
-            errors.append(f'{name}: still-image menu lacks Set as wallpaper or Copy image')
+        e = g['status'].get('eligibility') or {}
+        if set(e) != set(ELIG_KEYS):
+            errors.append(f'{name}: menu frame does not declare its eligibility case')
+        elif labels != menu_items(e) or labels != g['status'].get('expected_items'):
+            errors.append(f'{name}: menu items {labels} differ from eligibility {menu_items(e)}')
+        if not labels:
+            errors.append(f'{name}: More menu drawn with no item')
+        if e.get('access') != 'LIBRARY' and labels:
+            errors.append(f'{name}: menu offered outside LIBRARY access')
+        checks += 1 + verify_menu_limits(g, errors)
         if (g['font_scale'] >= 1.5) != ('menu-identity' in ids):
             errors.append(f'{name}: identity row must appear exactly when font scale >= 1.5')
         ident = next((c for c in controls if c['id'] == 'menu-identity'), None)
@@ -698,7 +951,7 @@ def verify_frame(g, svg, png, bg, palette, errors):
             errors.append(f'{name}: error message does not take focus first')
         if [c['id'] for c in controls if c['role'] in TAPPABLE] != ['ok']:
             errors.append(f'{name}: error offers an action other than OK')
-        checks += 2
+        checks += 2 + verify_error_copy(g, controls, errors)
     checks += 1
     shown_ids = {c['id'] for c in controls if c.get('visibility', 'full') == 'full' and c['rect_px']}
     if g['photo_visible_fraction'] < MIN_PHOTO_VISIBLE and 'menu-identity' not in shown_ids:
@@ -711,14 +964,217 @@ def verify_frame(g, svg, png, bg, palette, errors):
     return checks, ratios, sizes
 
 
+def verify_menu_limits(g, errors):
+    """#1128 finding 3: enforce the stated popup limits on the drawn surface."""
+    name, (W, H) = g['file'], g['px']
+    L, T, R, B = g['insets_ltrb_px']
+    x, y, w, h = g['modal_px']
+    tol = 0.5
+    found = []
+    if not (MENU_MIN_W - tol <= w <= MENU_MAX_W + tol):
+        found.append(f'width {w / DP:.1f} dp outside 112-280 dp')
+    if y < T + MENU_EDGE_MARGIN - tol:
+        found.append(f'top gap {(y - T) / DP:.1f} dp < 48 dp from the safe window')
+    if y + h > H - B - MENU_EDGE_MARGIN + tol:
+        found.append(f'bottom gap {(H - B - y - h) / DP:.1f} dp < 48 dp from the safe window')
+    if x < L + MENU_SIDE_GAP - tol:
+        found.append(f'left gap {(x - L) / DP:.1f} dp < 8 dp inside the safe window')
+    if x + w > W - R - MENU_SIDE_GAP + tol:
+        found.append(f'right gap {(W - R - x - w) / DP:.1f} dp < 8 dp inside the safe window')
+    lim = g.get('menu_limits') or {}
+    gaps = lim.get('gaps_dp') or {}
+    want = {'top': (y - T) / DP, 'bottom': (H - B - y - h) / DP, 'left': (x - L) / DP, 'right': (W - R - x - w) / DP}
+    if set(gaps) != set(want) or any(abs(gaps[k] - want[k]) > 0.1 for k in want):
+        found.append('menu_limits gaps do not match the drawn surface')
+    for c in g['controls']:
+        if c['role'] == 'menuitem' and c.get('visibility') == 'full' and c['rect_px'][3] < MIN_HIT - 0.01:
+            found.append(f'{c["id"]} row {c["rect_px"][3] / DP:.1f} dp < 48 dp')
+    errors.extend(f'{name}: {m}' for m in found)
+    return 6
+
+
+def verify_viewer(g, controls, ids, safe, errors):
+    """Restricted/video viewer: no More, no menu, host-wired chrome only."""
+    name = g['file']
+    e = g['status'].get('eligibility') or {}
+    found = []
+    if set(e) != set(ELIG_KEYS):
+        found.append('viewer frame does not declare its eligibility case')
+        e = {}
+    if g['modal_px'] or g['inert_background_controls']:
+        found.append('restricted/video viewer must have no surface over it')
+    if 'more' in ids or any(c['role'] == 'menuitem' for c in controls):
+        found.append('More or a menu item is offered')
+    if e and menu_items(e):
+        found.append(f'eligibility {menu_items(e)} says a menu applies')
+    if g['status'].get('more_shown') is not False or g['status'].get('expected_items') != []:
+        found.append('status does not record More hidden')
+    if e:
+        a = ACCESS[e['access']]
+        if ('details' in ids) != a['details']:
+            found.append(f'Details shown={"details" in ids} but {e["access"]} details={a["details"]}')
+        back = next((c for c in controls if c['id'] == 'back'), None)
+        if not back or back['label'] != a['back']:
+            found.append(f'Back label must be {a["back"]!r}')
+        slab = [i for i in ids if i.startswith('slab-')]
+        if e['access'] != 'LIBRARY' and (slab or 'filmstrip-current' in ids):
+            found.append(f'{e["access"]} shows library chrome {slab or ["filmstrip"]}')
+        if e['access'] == 'LIBRARY' and ('filmstrip-current' not in ids or not slab):
+            found.append('LIBRARY viewer lost its filmstrip or slab (existing navigation)')
+        if e['media'] == 'video' and 'slab-edit' in ids:
+            found.append('video shows Edit (PhotoEditorHandoff is still-only)')
+    tap = [c for c in controls if c['role'] in TAPPABLE]
+    for c in tap:
+        r = c['rect_px']
+        if min(r[2], r[3]) < MIN_HIT - 0.01:
+            found.append(f'{c["id"]} {r[2]:.0f}x{r[3]:.0f}px < 48 dp')
+        if not inside(r, safe):
+            found.append(f'{c["id"]} outside safe insets')
+    for i, a in enumerate(tap):
+        for b in tap[i + 1:]:
+            if overlap(a['rect_px'], b['rect_px']):
+                found.append(f'{a["id"]} overlaps {b["id"]}')
+    errors.extend(f'{name}: {m}' for m in found)
+    return 6 + 2 * len(tap)
+
+
+def verify_error_copy(g, controls, errors):
+    """#1128 finding 2: copy only claims what is known about the clipboard."""
+    name, st = g['file'], g['status']
+    msg = controls[0]['label'].lower()
+    found = []
+    clip = st.get('clipboard', '')
+    if clip.startswith('unknown'):
+        if any(w in msg for w in UNCHANGED_CLAIMS):
+            found.append('unknown clipboard state, but the message asserts it was not changed')
+        if 'changed' not in st or not st['changed'].startswith('unknown'):
+            found.append('unknown clipboard state recorded as unchanged')
+    if any(w in msg for w in SUCCESS_CLAIMS):
+        found.append('error message claims success')
+    if st.get('reads_or_restores_prior_clipboard') is not False or st.get('automatic_retry') is not False:
+        found.append('error reads/restores the prior clipboard or retries automatically')
+    if g['stage'] == 'unconfirmed' and controls[0]['label'] != (
+            "Couldn't copy image. Atlas couldn't confirm the image was copied. Try again."):
+        found.append('generic clipboard failure copy differs from the brief')
+    if g['stage'] == 'revoked' and not clip.startswith('unchanged (known'):
+        found.append('pre-commit unreadable state must record the clipboard as known unchanged')
+    errors.extend(f'{name}: {m}' for m in found)
+    return 4
+
+
+# Hand-written witnesses: literal expectations, independent of menu_items().
+ELIG_WITNESSES = [
+    (elig(), ['ai-edit', 'swap-person', 'set-wallpaper', 'copy-image']),
+    (elig(wallpaper=False), ['ai-edit', 'swap-person', 'copy-image']),
+    (elig(copy=False), ['ai-edit', 'swap-person', 'set-wallpaper']),
+    (elig(swap=False, wallpaper=False), ['ai-edit', 'copy-image']),
+    (elig(ai_edit=False), ['set-wallpaper', 'copy-image']),
+    (elig(ai_edit=False, copy=False), ['set-wallpaper']),
+    (elig(ai_edit=False, wallpaper=False), ['copy-image']),
+    (elig(ai_edit=False, swap=True, wallpaper=False, copy=False), []),
+    (elig(wallpaper=False, copy=False), ['ai-edit', 'swap-person']),
+    (elig(readable=False), ['ai-edit', 'swap-person']),
+    (elig(readable=False, ai_edit=False), []),
+    (elig(media='video'), []),
+    (elig(access='EXTERNAL'), []),
+    (elig(access='EXTERNAL', ai_edit=False, swap=False), []),
+    (elig(access='SECURE'), []),
+    (elig(access='SECURE', media='video'), []),
+]
+
+
+def expected_items(e):
+    """Independent per-action oracle: each item decided on its own predicate only."""
+    base = e['access'] == 'LIBRARY' and e['media'] == 'still'
+    want = {
+        'ai-edit': base and e['ai_edit'],
+        'swap-person': base and e['ai_edit'] and e['swap'],
+        'set-wallpaper': base and e['readable'] and e['wallpaper'],
+        'copy-image': base and e['readable'] and e['copy'],
+    }
+    return [m[0] for m in MENU_ITEMS if want[m[0]]]
+
+
+def verify_matrix(data, errors):
+    """#1128 finding 1: access x media x per-action eligibility, every row exactly."""
+    stored = data.get('eligibility_matrix') or []
+    fresh = eligibility_matrix()
+    found = []
+    if stored != fresh:
+        found.append('geometry eligibility_matrix is stale; rebuild')
+    if len(fresh) != 192 or len({tuple(r[k] for k in ELIG_KEYS) for r in fresh}) != 192:
+        found.append('eligibility matrix does not cover all 192 combinations exactly once')
+    for e, want in ELIG_WITNESSES:
+        if menu_items(e) != want:
+            found.append(f'witness {e}: got {menu_items(e)}, want {want}')
+    for row in fresh:
+        e = {k: row[k] for k in ELIG_KEYS}
+        if row['items'] != expected_items(e) or row['more'] != bool(expected_items(e)):
+            found.append(f'{e}: items {row["items"]} != per-action expectation {expected_items(e)}')
+        if not row['wallpaper'] and 'set-wallpaper' in row['items']:
+            found.append(f'{e}: Set as wallpaper offered with wallpaper=False')
+        if not row['copy'] and 'copy-image' in row['items']:
+            found.append(f'{e}: Copy image offered with copy=False')
+        if not row['ai_edit'] and ({'ai-edit', 'swap-person'} & set(row['items'])):
+            found.append(f'{e}: AI Edit or Swap offered with ai_edit=False')
+    for row in fresh:
+        items, tag = row['items'], {k: row[k] for k in ELIG_KEYS}
+        if row['access'] != 'LIBRARY' and items:
+            found.append(f'{tag}: restricted access offers {items}')
+        if row['media'] != 'still' and items:
+            found.append(f'{tag}: video offers {items}')
+        if row['more'] != bool(items):
+            found.append(f'{tag}: More shown with no item, or hidden with one')
+        if 'swap-person' in items and items[items.index('swap-person') - 1] != 'ai-edit':
+            found.append(f'{tag}: Swap person not directly under AI Edit')
+        if not row['readable'] and ({'set-wallpaper', 'copy-image'} & set(items)):
+            found.append(f'{tag}: B/C offered for an unreadable URI')
+    lib = [r for r in fresh if r['access'] == 'LIBRARY' and r['media'] == 'still' and r['readable']]
+    # B and C are independent of each other and of AI Edit
+    if not any(r['items'] == ['set-wallpaper'] for r in lib) or not any(r['items'] == ['copy-image'] for r in lib):
+        found.append('B and C are not independently eligible')
+    if not any(r['items'] == ['ai-edit', 'swap-person'] for r in lib):
+        found.append('existing-only menu (no B/C) is not reachable')
+    rules = ' '.join(r['when'] + ' ' + r['outcome'] for r in data.get('activation_rules') or [])
+    for need in ('access is no longer LIBRARY', 'current item changed', 'C-revoked', 'C-unconfirmed',
+                 'B-unsupported', 'B-no-handler', 'no fallback photo', 'no automatic retry'):
+        if need not in rules:
+            found.append(f'activation rules do not cover {need!r}')
+    # rendered coverage: restricted still, video, one-B/C, existing-only
+    frames = data['frames']
+    def has(pred):
+        return any(pred(g['status'].get('eligibility') or {}, g) for g in frames)
+    for label, pred in (
+            ('EXTERNAL still', lambda e, g: e.get('access') == 'EXTERNAL' and e.get('media') == 'still'),
+            ('SECURE still', lambda e, g: e.get('access') == 'SECURE' and e.get('media') == 'still'),
+            ('video fallback', lambda e, g: e.get('media') == 'video'),
+            ('one B/C eligible at 200 %', lambda e, g: g['font_scale'] == 2 and
+             len({'set-wallpaper', 'copy-image'} & set(g['status'].get('expected_items', []))) == 1),
+            ('existing-only at 200 %', lambda e, g: g['font_scale'] == 2 and
+             g['status'].get('expected_items') == ['ai-edit', 'swap-person'])):
+        if not has(pred):
+            found.append(f'no rendered frame for {label}')
+    for stage in ERRORS:
+        for theme in ('light', 'dark'):
+            for orient in ('portrait', 'landscape'):
+                scales = (1, 2) if stage == 'unconfirmed' else ((1, 2) if orient == 'portrait' else (2,))
+                for sc in scales:
+                    if not any(g['stage'] == stage and g['theme'] == theme and g['orientation'] == orient
+                               and g['font_scale'] == sc for g in frames):
+                        found.append(f'no rendered {stage} {theme} {orient} {sc}x frame')
+    errors.extend(f'matrix: {m}' for m in found)
+    return 4 * len(fresh) + len(ELIG_WITNESSES) + 20
+
+
 def verify_cross(frames, sizes, errors):
     by = {g['file']: g for g in frames}
     checks = 0
     for g in frames:
         if g['font_scale'] != 2:
             continue
-        base = g['file'].replace('-200', '').replace('-landscape', '').replace('-scrolled', '')
-        base = base.replace('-noswap', '').replace('-noaiedit', '')
+        base = g['file'].replace('-200', '').replace('-landscape', '').replace('-scrolled', '').replace('-mid', '')
+        for var in ('-noswap', '-noaiedit', *(f'-{v}' for v in MENU_VARIANTS)):
+            base = base.replace(var, '')
         if base not in by:
             errors.append(f'{g["file"]}: no 100 % counterpart {base}')
             continue
@@ -734,7 +1190,8 @@ def verify_cross(frames, sizes, errors):
                 continue
             checks += 1
             hidden = {c['id'] for c in g['controls'] if c.get('visibility') in ('partial', 'offscreen')}
-            shown_end = {c['id'] for c in end['controls'] if c.get('visibility', 'full') == 'full'}
+            shown_end = {c['id'] for fr in (end, by.get(g['file'] + '-scrolled-mid')) if fr
+                         for c in fr['controls'] if c.get('visibility', 'full') == 'full'}
             if not hidden <= shown_end:
                 errors.append(f'{g["file"]}: {sorted(hidden - shown_end)} never fully visible')
     return checks
@@ -786,6 +1243,7 @@ def run(build_flag, render_flag, verify_flag):
         ratios += r
         sizes[name] = s
     cross = verify_cross(frames, sizes, errors)
+    matrix = verify_matrix(data, errors)
     try:
         commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True,
                                 check=True).stdout.strip()
@@ -796,7 +1254,9 @@ def run(build_flag, render_flag, verify_flag):
         'frames_200': sum(1 for g in frames if g['font_scale'] == 2),
         'landscape': sum(1 for g in frames if g['orientation'] == 'landscape'),
         'controls': sum(len(g['controls']) for g in frames), 'control_checks': checks,
-        'scale_and_scroll_checks': cross, 'text_runs': len(ratios),
+        'scale_and_scroll_checks': cross, 'eligibility_checks': matrix,
+        'viewer_frames': sum(1 for g in frames if g['flow'] == 'V'),
+        'text_runs': len(ratios),
         'minimum_text_contrast': min(ratios) if ratios else None,
         'minimum_photo_visible': min(g['photo_visible_fraction'] for g in frames),
         'errors': errors,
