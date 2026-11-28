@@ -47,7 +47,7 @@ class PerformanceSettingsJourneyTest {
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
-    private val overviewTags = listOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
+    private val overviewTags = listOf("cold_start_ms", "grid_frame_ms",
         "face_photos_min", "visual_photos_min", "heap_fraction").map { "atlas-perf-$it" }
 
     @Test fun performanceReportStateMatrix() {
@@ -88,7 +88,7 @@ class PerformanceSettingsJourneyTest {
                 val theme = if (isDark) "dark" else "light"
                 val state = if (populated) "populated" else "empty"
 
-                // One viewport from the Performance heading shows all six headline rows.
+                // One viewport from the Performance heading shows all five headline rows.
                 scrollToTop("atlas-settings-performance")
                 val viewportBottom = compose.onNodeWithTag("atlas-settings-screen")
                     .fetchSemanticsNode().boundsInRoot.bottom
@@ -99,9 +99,13 @@ class PerformanceSettingsJourneyTest {
                         bottom <= viewportBottom + 1f)
                 }
                 if (!populated) {
-                    assertEquals(6 + PerformanceReport.INSTRUMENTED_ACTIONS,
+                    assertEquals(5 + PerformanceReport.INSTRUMENTED_ACTIONS - 4,
                         compose.onAllNodesWithText(PerformanceReport.NO_DATA)
                             .fetchSemanticsNodes().size)
+                }
+                assertEquals(11, compose.onAllNodesWithText(PerformanceReport.NOT_MEASURED).fetchSemanticsNodes().size)
+                listOf("viewer_ms", "action_a1_ms", "action_a2_ms", "action_a5_ms", "action_a8_ms").forEach { tag ->
+                    compose.onNodeWithTag("atlas-perf-$tag").assertDoesNotExist()
                 }
                 saveUiEvidence("perf-0-overview-$theme-$state.png")
 
