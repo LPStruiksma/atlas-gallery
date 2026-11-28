@@ -68,8 +68,9 @@ import kotlin.random.Random
  *   of the original per tile, no micro tier, no prefetch);
  * - `after_cold`: the #555 pipeline with an empty micro-thumbnail store
  *   (first scroll after install, before the background warmer ran);
- * - `after_warm`: the #555 pipeline after [MicroThumbnailWarmer] filled the
- *   store (steady state), memory cache cleared.
+ * - `after_warm`: the #555 pipeline after [MicroThumbnailWarmer] populated the
+ *   cleared store (up to its budget), with positive decoded sample coverage
+ *   verified before timing and memory cache cleared.
  *
  * `before` and `after_warm` repeat `atlas_thumbnail_fling_reps` times
  * (default 3), interleaved, so run-to-run noise is visible.
@@ -118,10 +119,39 @@ class GridThumbnailFlingBenchmarkTest {
             // Steady state: the background warmer fills the store newest-first.
             store.clear()
             ThumbnailPipeline.enabled = true
-            val warm = runBlocking { MicroThumbnailWarmer.warm(context.contentResolver, items) { false } }
+            check(store.scan() == 0L) { "warm benchmark must start with an empty store" }
+
+            // Negative control: the historical trailing lambda bound to gate,
+            // not yieldWhile. Prove that a stopped warmer cannot admit a warm arm.
+            val noOp = runBlocking {
+                MicroThumbnailWarmer.warm(context.contentResolver, items,
+                    yieldWhile = { false }, gate = { false })
+            }
+            val emptyBytes = store.scan()
+            val emptyReads = quietMicroReads(store, items).getInt("reads")
+            check(noOp.checked == 0 && noOp.generated == 0 && emptyBytes == 0L && emptyReads == 0) {
+                "disabled warmer unexpectedly populated the cleared store"
+            }
+            assertWarmCoverageRejected(noOp, emptyBytes, emptyReads)
+            // Independently exercise each witness: a positive counter alone,
+            // or readable bytes with no actual warm work, must not suffice.
+            val claimedWork = MicroThumbnailWarmer.Report(1, 1, 0, 0L)
+            assertWarmCoverageRejected(claimedWork, 1L, 0)
+            assertWarmCoverageRejected(claimedWork, 0L, 1)
+            assertWarmCoverageRejected(claimedWork.copy(checked = 0), 1L, 1)
+            assertWarmCoverageRejected(claimedWork.copy(generated = 0), 1L, 1)
+
+            val warm = runBlocking {
+                MicroThumbnailWarmer.warm(context.contentResolver, items,
+                    yieldWhile = { false }, gate = { true })
+            }
+            val storeBytes = store.scan()
+            val quietReads = quietMicroReads(store, items)
+            requireWarmCoverage(warm, storeBytes, quietReads.getInt("reads"))
             Log.i(TAG, JSONObject().put("bench", "thumbnail_fling_warm").put("photos", items.size)
-                .put("warmer", warm.json()).put("store_bytes", store.scan())
-                .put("quiet_read_decode", quietMicroReads(store, items)).toString())
+                .put("warmer", warm.json()).put("store_bytes", storeBytes)
+                .put("quiet_read_decode", quietReads)
+                .put("invalid_warm_rejected", true).toString())
             for (rep in 1..reps) {
                 if (rep > 1) Log.i(TAG, runArm("before", rep, items).toString())
                 Log.i(TAG, runArm("after_warm", rep, items).toString())
@@ -289,6 +319,24 @@ class GridThumbnailFlingBenchmarkTest {
         }
     }
 
+    /** Fail closed before emitting any after_warm timing row. A disk budget may
+     * legitimately limit coverage; the newest sample must still decode at least
+     * one actual fixture thumbnail after positive warmer work on a cleared store.
+     */
+    private fun requireWarmCoverage(warm: MicroThumbnailWarmer.Report, storeBytes: Long, reads: Int) {
+        check(warm.checked > 0 && warm.generated > 0 && storeBytes > 0L && reads > 0) {
+            "invalid warm arm: checked=${warm.checked}, generated=${warm.generated}, " +
+                "failed=${warm.failed}, store_bytes=$storeBytes, readable_sample=$reads"
+        }
+    }
+
+    private fun assertWarmCoverageRejected(warm: MicroThumbnailWarmer.Report, storeBytes: Long, reads: Int) {
+        val failure = runCatching { requireWarmCoverage(warm, storeBytes, reads) }.exceptionOrNull()
+        check(failure is IllegalStateException && failure.message?.startsWith("invalid warm arm:") == true) {
+            "invalid warm witness was not rejected by the coverage guard"
+        }
+    }
+
     /**
      * Service time of one micro thumbnail on an idle system: file read plus
      * RGB_565 decode, 500 sequential reads, no grid on screen. Separates the
@@ -299,7 +347,8 @@ class GridThumbnailFlingBenchmarkTest {
         val options = android.graphics.BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.RGB_565
         }
-        val times = items.take(500).mapNotNull { media ->
+        val sample = items.take(500)
+        val times = sample.mapNotNull { media ->
             val key = nl.atlas.gallery.featuremedia.microThumbnailDiskKey(media) ?: return@mapNotNull null
             val started = System.nanoTime()
             val bytes = store.read(key) ?: return@mapNotNull null
@@ -311,7 +360,8 @@ class GridThumbnailFlingBenchmarkTest {
         }.sorted()
         fun pct(p: Int) = if (times.isEmpty()) 0.0
             else Math.round(times[((times.size * p + 99) / 100 - 1).coerceIn(0, times.lastIndex)] / 1e4) / 100.0
-        return JSONObject().put("reads", times.size).put("p50_ms", pct(50)).put("p95_ms", pct(95))
+        return JSONObject().put("sampled", sample.size).put("reads", times.size)
+            .put("p50_ms", pct(50)).put("p95_ms", pct(95))
     }
 
     /** Full-resolution screenshot as JPEG base64 lines on logcat (synthetic fixtures only). */
