@@ -15,6 +15,7 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -269,24 +270,37 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         val autoAdvance = compose.mainClock.autoAdvance
         compose.mainClock.autoAdvance = false
         try {
+            // Towards the top: the recording before this left the grid at its
+            // end, where an upward swipe would not scroll (and so would not
+            // show the scroller).
             compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
-                swipeUp(startY = height * .6f, endY = height * .5f, durationMillis = 1_500L)
+                swipeDown(startY = height * .4f, endY = height * .5f, durationMillis = 1_500L)
             }
             compose.mainClock.advanceTimeBy(100L)
+            assertTrue("the scroller shows after a slow drag",
+                compose.onAllNodes(hasTestTag("atlas-fast-scroll-thumb-hit"), useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty())
             val thumb = compose.onNodeWithTag("atlas-fast-scroll-thumb", useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val header = compose.onAllNodes(hasTestTag("atlas-scrolling-header"))
-                .fetchSemanticsNodes().firstOrNull()?.boundsInRoot?.bottom ?: 0f
+                .fetchSemanticsNodes().maxOfOrNull { it.boundsInRoot.bottom } ?: 0f
             val slab = compose.onNodeWithTag("atlas-nav-pill").fetchSemanticsNode().boundsInRoot.top
-            val tile = compose.onAllNodes(tileMatcher).fetchSemanticsNodes().firstOrNull {
-                val b = it.boundsInRoot
-                b.left < bandLeft && b.right > bandRight && b.top > header && b.bottom < slab &&
-                    (b.bottom < thumb.top || b.top > thumb.bottom)
+            val tapX = (bandLeft + bandRight) / 2f
+            val margin = with(compose.density) { 8.dp.toPx() }
+            val inBand = compose.onAllNodes(tileMatcher).fetchSemanticsNodes()
+                .filter { it.boundsInRoot.left < tapX && it.boundsInRoot.right > tapX }
+            // The tap goes to the tile's vertical centre, which must be on
+            // screen between the header and the slab, and clear of the thumb.
+            val tile = inBand.firstOrNull {
+                val y = it.boundsInRoot.center.y
+                y > header + margin && y < slab - margin &&
+                    (y < thumb.top - margin || y > thumb.bottom + margin)
             }
-            assertTrue("a right-column tile clear of the thumb", tile != null)
+            assertTrue("a right-column tile clear of the thumb: tap x $tapX, header $header, " +
+                "slab $slab, thumb $thumb, band tiles ${inBand.map { it.boundsInRoot }}", tile != null)
             val b = tile!!.boundsInRoot
             compose.onNodeWithTag(tile.config[SemanticsProperties.TestTag]).performTouchInput {
-                click(Offset((bandLeft + bandRight) / 2f - b.left, b.height / 2f))
+                click(Offset(tapX - b.left, b.height / 2f))
             }
         } finally {
             compose.mainClock.autoAdvance = autoAdvance
