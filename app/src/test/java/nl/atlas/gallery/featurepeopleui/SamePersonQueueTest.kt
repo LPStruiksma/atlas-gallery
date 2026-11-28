@@ -127,4 +127,91 @@ class SamePersonQueueTest {
         assertEquals(listOf(8 to 3),
             samePersonQueue(s).items.map { it.subjectFaces to it.otherFaces })
     }
+
+    @Test fun namingEitherSideUsesThePersonReducerAndKeepsTheTransformedPair() {
+        val original = state()
+        val question = samePersonQueue(original).items.first()
+        for (subject in listOf(true, false)) {
+            val request = requireNotNull(captureQueueName(original, question, subject, "scope"))
+            val naming = request.naming(original, "scope", "Synthetic name") as PersonNaming.Apply
+            val named = requireNotNull(reviewPeopleCluster(original, naming.action))
+            val newTarget = targetAfter(request.target, naming.action)
+            assertEquals("Synthetic name", personPageFacts(named, newTarget)?.name)
+            assertTrue(request.pairAfter(naming.action).contains(newTarget))
+            assertTrue(samePersonQueue(named).items.any { it.matchesNamingPair(request.pairAfter(naming.action)) })
+            val undone = requireNotNull(reviewPeopleCluster(named, PeopleReviewAction.Undo))
+            assertEquals(original.names, undone.names)
+            assertEquals(samePersonQueue(original), samePersonQueue(undone))
+        }
+    }
+
+    @Test fun renameAndExactCollisionAreDifferentActionsAndConfirmUsesTheCapturedPerson() {
+        val original = state()
+        val named = requireNotNull(reviewPeopleCluster(original,
+            PeopleReviewAction.NameCluster(original.group(6).id, ada, "Synthetic Ada")))
+        val question = samePersonQueue(named).items.first()
+        val rename = requireNotNull(captureQueueName(named, question, true, "scope"))
+        val renamed = requireNotNull(reviewPeopleCluster(named,
+            (rename.naming(named, "scope", "Synthetic Ada new") as PersonNaming.Apply).action))
+        assertEquals("Synthetic Ada new", renamed.names[ada])
+        assertEquals("Synthetic Ada", reviewPeopleCluster(renamed, PeopleReviewAction.Undo)?.names?.get(ada))
+        val assign = requireNotNull(captureQueueName(named, question, false, "scope"))
+        val offer = assign.naming(named, "scope", "synthetic ADA") as PersonNaming.OfferMerge
+        assertEquals(ada, offer.into.person)
+        assertEquals(listOf(offer.into), assign.suggestions(named, "scope", "ada"))
+        // An offer is not a reducer write; only this exact confirmed candidate can be assigned.
+        assertEquals(6, named.clusters.reviews.confirmed.count { it.value == ada })
+        assertNull(assign.confirmedAction(named, "scope", "synthetic ADA",
+            offer.into.copy(name = "Other")))
+        val action = requireNotNull(assign.confirmedAction(named, "scope", "synthetic ADA", offer.into))
+        val joined = requireNotNull(reviewPeopleCluster(named, action))
+        assertEquals(11, joined.clusters.reviews.confirmed.count { it.value == ada })
+        assertEquals(1, samePersonQueue(joined).open)
+        val restored = requireNotNull(reviewPeopleCluster(joined, PeopleReviewAction.Undo))
+        assertEquals(samePersonQueue(named), samePersonQueue(restored))
+    }
+
+    @Test fun namingAndUndoPreserveAnIndependentMixedMarkAndSkipFingerprint() {
+        val original = state()
+        val questions = samePersonQueue(original).items
+        val first = questions.first()
+        val other = questions.last()
+        val skip = requireNotNull(samePersonSkipFingerprint(original, other, "scope"))
+        val request = requireNotNull(captureQueueName(original, first, true, "scope"))
+        val named = requireNotNull(reviewPeopleCluster(original,
+            (request.naming(original, "scope", "Synthetic name") as PersonNaming.Apply).action))
+        val unchanged = samePersonQueue(named).items.single { it.key == other.key }
+        assertEquals(skip, samePersonSkipFingerprint(named, unchanged, "scope"))
+
+        val mixed = requireNotNull(reviewPeopleCluster(original,
+            requireNotNull(samePersonQueueMixedSides(other, subject = true, other = false))))
+        val remaining = samePersonQueue(mixed).items.first { it.key == first.key }
+        val afterMixed = requireNotNull(captureQueueName(mixed, remaining, true, "scope"))
+        val renamed = requireNotNull(reviewPeopleCluster(mixed,
+            (afterMixed.naming(mixed, "scope", "Synthetic name") as PersonNaming.Apply).action))
+        assertEquals(mixed.clusters.reviews.mixedGroups, renamed.clusters.reviews.mixedGroups)
+        val undone = requireNotNull(reviewPeopleCluster(renamed, PeopleReviewAction.Undo))
+        assertEquals(mixed.clusters.reviews.mixedGroups, undone.clusters.reviews.mixedGroups)
+        assertEquals(mixed.names, undone.names)
+    }
+
+    @Test fun staleScopeGenerationMembershipAndHiddenNamesNeverYieldAnAction() {
+        val original = state()
+        val question = samePersonQueue(original).items.first()
+        val request = requireNotNull(captureQueueName(original, question, false, "scope"))
+        assertEquals(PersonNaming.Invalid, request.naming(original, "different scope", "Name"))
+        assertEquals(PersonNaming.Invalid,
+            request.naming(original.copy(sourceGeneration = "new"), "scope", "Name"))
+        val changed = requireNotNull(reviewPeopleCluster(original,
+            samePersonQueueAnswer(question, true)))
+        assertEquals(PersonNaming.Invalid, request.naming(changed, "scope", "Name"))
+        assertTrue(request.suggestions(null, "scope", "Name").isEmpty())
+        val named = requireNotNull(reviewPeopleCluster(original,
+            PeopleReviewAction.NameCluster(original.group(8).id, ada, "Hidden synthetic")))
+        val hidden = requireNotNull(reviewPeopleCluster(named, PeopleReviewAction.SetPersonHidden(ada, true)))
+        val other = samePersonQueue(hidden).items.first()
+        val hiddenRequest = requireNotNull(captureQueueName(hidden, other, false, "scope"))
+        assertTrue(hiddenRequest.suggestions(hidden, "scope", "Hidden").isEmpty())
+        assertEquals(PersonNaming.Invalid, hiddenRequest.naming(hidden, "scope", "Hidden synthetic"))
+    }
 }

@@ -1,9 +1,17 @@
 package nl.atlas.gallery
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,7 +61,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -65,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import nl.atlas.gallery.featuredesign.AtlasMotion
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featuregrid.AtlasRatioGallery
@@ -400,12 +415,123 @@ internal fun PersonNameDialog(
     suggestions: (String) -> List<NativePersonAlbum>,
     suggestionPortrait: @Composable (NativePersonAlbum) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String) -> Unit,
+    sourcePreview: (@Composable (Boolean) -> Unit)? = null,
+    busy: Boolean = false,
+    error: String? = null,
+    valid: Boolean = true,
+    editing: Boolean = initial.isNotEmpty(),
+    loading: Boolean = false,
+    onPick: ((NativePersonAlbum) -> Unit)? = null,
+    onRetry: ((String) -> Unit)? = null,
+    expandedMatches: Boolean = false,
+    onExpandedChange: (Boolean) -> Unit = {},
+    onQueryChange: (String) -> Unit = {}
 ) {
     var text by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    val shown = suggestions(text).filterNot { it.name == text.trim() }
+    val shown = suggestions(text).filterNot { sourcePreview == null && it.name == text.trim() }
+    if (sourcePreview != null) {
+        val expanded = expandedMatches
+        Dialog(onDismissRequest = { if (!busy) onDismiss() },
+            properties = DialogProperties(usePlatformDefaultWidth = false,
+                dismissOnBackPress = !busy, dismissOnClickOutside = !busy)) {
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center) {
+                val compact = maxHeight < 400.dp || LocalDensity.current.fontScale > 1.2f
+                Surface(Modifier.widthIn(max = 420.dp).fillMaxWidth()
+                    .testTag("atlas-person-name-dialog"),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Column(Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(if (editing) "Edit name" else "Add name",
+                            style = MaterialTheme.typography.titleMedium)
+                        sourcePreview(compact)
+                        if (valid) {
+                            OutlinedTextField(value = text,
+                                onValueChange = { if (it.length <= 80) { text = it; onQueryChange(it) } },
+                                enabled = !busy, singleLine = true,
+                                placeholder = { Text("Name") },
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = {
+                                    if (!busy && !loading && error == null && text.isNotBlank()) {
+                                        keyboard?.hide()
+                                        onSave(text)
+                                    }
+                                }),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                                    .testTag("atlas-person-name-field"))
+                        }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Name search", style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f))
+                            if (compact && !expanded && shown.size > 5 && !busy &&
+                                !loading && valid && error == null)
+                                TextButton(onClick = { onExpandedChange(true) },
+                                    modifier = Modifier.heightIn(min = 48.dp)
+                                        .testTag("atlas-person-name-more")) { Text("More people") }
+                        }
+                        if (busy || loading || !valid || error != null) {
+                            Row(Modifier.heightIn(min = 48.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (busy || loading) QueueNamingProgress()
+                                Text(if (busy) "Saving name…" else if (loading) "Loading face…"
+                                    else error ?: "Group changed.",
+                                    modifier = Modifier.weight(1f))
+                                if (!busy && !loading && valid && onRetry != null)
+                                    TextButton(onClick = { onRetry(text) }) { Text("Retry") }
+                            }
+                        } else if (shown.isEmpty()) {
+                            Text(if (text.isBlank()) "Type a name" else "No matching names",
+                                Modifier.padding(vertical = 8.dp))
+                        } else {
+                            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false)
+                                .heightIn(max = if (compact) 48.dp else 144.dp)
+                                .testTag("atlas-person-name-results")) {
+                                items(if (expanded) shown else shown.take(5),
+                                    key = { it.person.value }) { person ->
+                                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                        .clickable {
+                                            keyboard?.hide()
+                                            if (onPick == null) onSave(person.name) else onPick(person)
+                                        }.testTag("atlas-person-name-suggestion"),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Box(Modifier.size(36.dp).clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                            contentAlignment = Alignment.Center) { suggestionPortrait(person) }
+                                        Text(person.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                            if (!compact && !expanded && shown.size > 5)
+                                TextButton(onClick = { onExpandedChange(true) },
+                                    modifier = Modifier.heightIn(min = 48.dp)
+                                        .testTag("atlas-person-name-more")) { Text("More people") }
+                        }
+                        Row(Modifier.fillMaxWidth().testTag("atlas-person-name-footer"),
+                            horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = onDismiss, enabled = !busy,
+                                modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(if (valid) "Cancel" else "Return")
+                            }
+                            Button(onClick = { keyboard?.hide(); onSave(text) },
+                                enabled = valid && !busy && !loading && error == null && text.isNotBlank(),
+                                modifier = Modifier.heightIn(min = 48.dp)
+                                    .testTag("atlas-person-name-save")) { Text("Save") }
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initial.isEmpty()) "Add name" else "Edit name") },
@@ -448,6 +574,36 @@ internal fun PersonNameDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         modifier = Modifier.testTag("atlas-person-name-dialog")
     )
+}
+
+/** Indeterminate held sphere: climbs its arc while working, without fake counts. */
+@Composable
+private fun QueueNamingProgress() {
+    val context = LocalContext.current
+    val reducedMotion = AtlasMotion.animationsDisabled(context)
+    val phase = if (reducedMotion) 0.15f else {
+        val transition = rememberInfiniteTransition(label = "naming held sphere")
+        val animated by transition.animateFloat(initialValue = 0.08f, targetValue = 0.92f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(900, easing = AtlasMotion.SineInOut70),
+                repeatMode = RepeatMode.Reverse),
+            label = "sphere arc")
+        animated
+    }
+    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    val brand = MaterialTheme.colorScheme.primary
+    Canvas(Modifier.size(32.dp).testTag("atlas-person-name-progress")) {
+        val radius = size.minDimension / 2 - 6.dp.toPx()
+        val origin = Offset(size.width / 2, size.height / 2)
+        drawArc(ink.copy(alpha = .55f), 180f, 180f, false,
+            topLeft = Offset(origin.x - radius, origin.y - radius),
+            size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
+            style = Stroke(2.dp.toPx()))
+        val angle = Math.PI * (1.0 + phase)
+        drawCircle(brand, radius = 4.dp.toPx(),
+            center = Offset(origin.x + radius * kotlin.math.cos(angle).toFloat(),
+                origin.y + radius * kotlin.math.sin(angle).toFloat()))
+    }
 }
 
 /** "Merge with…": every other named person as a round face with a name. */
@@ -502,21 +658,40 @@ internal fun PersonMergeConfirm(
     currentName: String?,
     into: NativePersonAlbum,
     onDismiss: () -> Unit,
-    onMerge: () -> Unit
+    onMerge: () -> Unit,
+    portraits: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true,
+    busy: Boolean = false,
+    error: String? = null,
+    onRetry: (() -> Unit)? = null,
+    loading: Boolean = false
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Merge with ${into.name}?") },
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(if (portraits == null) "Merge with ${into.name}?" else "Merge people?") },
         text = {
-            Text(if (currentName == null) "These photos will be added to ${into.name}."
-                else "$currentName and ${into.name} will become one person.")
-        },
-        confirmButton = {
-            TextButton(onClick = onMerge, modifier = Modifier.testTag("atlas-person-merge-confirm")) {
-                Text("Merge")
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                portraits?.invoke()
+                if (busy || loading) QueueNamingProgress()
+                Text(error ?: if (busy) "Saving name…" else if (loading) "Loading faces…"
+                    else if (currentName == null) "These photos will be added to ${into.name}."
+                    else "$currentName and ${into.name} will become one person.")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            if (portraits == null) {
+                TextButton(onClick = onMerge, modifier = Modifier.testTag("atlas-person-merge-confirm")) {
+                    Text("Merge")
+                }
+            } else {
+                Button(onClick = if (error != null && onRetry != null) onRetry else onMerge,
+                    enabled = enabled && !busy && !loading && (error == null || onRetry != null),
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-person-merge-confirm")) {
+                    Text(if (error != null && onRetry != null) "Retry" else "Merge")
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") } },
         modifier = Modifier.testTag("atlas-person-merge-dialog")
     )
 }
