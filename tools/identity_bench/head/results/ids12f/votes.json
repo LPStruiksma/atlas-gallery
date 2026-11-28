@@ -1,215 +1,830 @@
 {
-  "schema": "ids12g-blind-votes-v1",
+  "schema": "ids12g-decoded-votes-v1",
   "rubric_revision": "IDS-12A@096f0796",
-  "sheet_tree": "68401f5ad04efdfb07a5676575358c6b3c1c1718",
-  "status": "ONE_JUDGE_ONLY",
-  "judges": [
+  "source_records": {
+    "judge_a": {
+      "path": "judge-a-blinded.json",
+      "blob": "23f2af458ff051d68217200b033d0450a5a515df",
+      "commit": "eef3fa84e0b93edc4021ba1f4ccb1ca3e24e9296"
+    },
+    "judge_b": {
+      "path": "judge-b-blinded.json",
+      "blob": "65eca1783b7ff0bb644d79d1aa99f017b9f6e3ed",
+      "commit": "3582f8502bc311b7127d603aed81b34215accbc9"
+    },
+    "sheet_key": {
+      "path": "sheet-key.json",
+      "blob": "e3f6760ebbf6b17086671c013040f4937e970d8e"
+    },
+    "rows": {
+      "path": "rows.json",
+      "blob": "d2bee7702ea94591b798ac732cedfd83c842bc92"
+    },
+    "cohort": {
+      "path": "../../cohort.json",
+      "blob": "280bebf1cbdecc40eb463ac7173e1d35f5ec20a1"
+    }
+  },
+  "pairs": [
     {
-      "judge": "chatgpt/dev pull-4004087d",
-      "method": "Viewed all 20 committed synthetic JPEG sheets with columns target, reference, A, B; compared reference-like new hair/hairline and visible neck-seam integration separately. A/B key and raw per-pair automatic rows not opened before recording. Visual preference only, not a profile-capable identity score. Tie if neither seam clearly preferable at sheet resolution.",
-      "votes": [
+      "pair_id": "f01",
+      "baseline_id": "f01:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
         {
-          "pair_id": "f01",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "B",
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A has reference-like hair; B has cleaner collar transition."
         },
         {
-          "pair_id": "f02",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "candidate",
+          "raw_preference": "B",
+          "reason": "A has reference-like hair; B has cleaner collar transition."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f02",
+      "baseline_id": "f02:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches reference hair shape; A has more continuous neck color at collar."
         },
         {
-          "pair_id": "f03",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "tie",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "baseline",
+          "raw_preference": "A",
+          "reason": "B matches reference hair shape; A has more continuous neck color at collar."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f03",
+      "baseline_id": "f03:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A changes hair and hairline; neither neck seam clearly better."
         },
         {
-          "pair_id": "f04",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "tie",
+          "presented_first": "candidate",
+          "raw_preference": "tie",
+          "reason": "A changes hair and hairline; neither neck seam clearly better."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f04",
+      "baseline_id": "f04:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A replaces hair with bald outline; dark residual shapes on sweater undermine A boundary."
         },
         {
-          "pair_id": "f05",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "tie",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "candidate",
+          "raw_preference": "B",
+          "reason": "A replaces hair with bald outline; dark residual shapes on sweater undermine A boundary."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f05",
+      "baseline_id": "f05:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches red waves; both collar transitions plausible."
         },
         {
-          "pair_id": "f06",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "tie",
+          "presented_first": "baseline",
+          "raw_preference": "tie",
+          "reason": "B matches red waves; both collar transitions plausible."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f06",
+      "baseline_id": "f06:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches reference hair; dark residual shape at B sweater shoulder."
         },
         {
-          "pair_id": "f07",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "baseline",
+          "raw_preference": "A",
+          "reason": "B matches reference hair; dark residual shape at B sweater shoulder."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "baseline",
+          "presented_first": "baseline",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f07",
+      "baseline_id": "f07:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches reference hair; reddish patch on A neck."
         },
         {
-          "pair_id": "f08",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "candidate",
+          "raw_preference": "B",
+          "reason": "A matches reference hair; reddish patch on A neck."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f08",
+      "baseline_id": "f08:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches reference hair and has smoother jaw-to-neck transition."
         },
         {
-          "pair_id": "f09",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": "B matches reference hair and has smoother jaw-to-neck transition."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f09",
+      "baseline_id": "f09:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches bald reference outline and smoother visible neck."
         },
         {
-          "pair_id": "f10",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": "B matches bald reference outline and smoother visible neck."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f10",
+      "baseline_id": "f10:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A changes hair and has cleaner jaw/neck integration."
         },
         {
-          "pair_id": "f11",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": "A changes hair and has cleaner jaw/neck integration."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f11",
+      "baseline_id": "f11:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches hair part and has cleaner jaw/neck color transition."
         },
         {
-          "pair_id": "f12",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": "B matches hair part and has cleaner jaw/neck color transition."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f12",
+      "baseline_id": "f12:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches bald outline; B has more obvious jaw-to-neck discontinuity."
         },
         {
-          "pair_id": "f13",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": "A matches bald outline; B has more obvious jaw-to-neck discontinuity."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f13",
+      "baseline_id": "f13:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches straight dark hair and has more continuous skin transition."
         },
         {
-          "pair_id": "f14",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": "B matches straight dark hair and has more continuous skin transition."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f14",
+      "baseline_id": "f14:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches reference hair shape; A has more continuous neck-to-chest color."
         },
         {
-          "pair_id": "f15",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "tie",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "baseline",
+          "presented_first": "baseline",
+          "raw_preference": "A",
+          "reason": "B matches reference hair shape; A has more continuous neck-to-chest color."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f15",
+      "baseline_id": "f15:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches reference part; both neck transitions plausible."
         },
         {
-          "pair_id": "f16",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "tie",
+          "presented_first": "candidate",
+          "raw_preference": "tie",
+          "reason": "A matches reference part; both neck transitions plausible."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f16",
+      "baseline_id": "f16:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches reference straight dark hair; A has more continuous jaw-to-neck shading."
         },
         {
-          "pair_id": "f17",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "tie",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": "A matches reference straight dark hair; A has more continuous jaw-to-neck shading."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f17",
+      "baseline_id": "f17:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches red waves; high collar conceals the seam in both."
         },
         {
-          "pair_id": "f18",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "A",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "tie",
+          "presented_first": "baseline",
+          "raw_preference": "tie",
+          "reason": "B matches red waves; high collar conceals the seam in both."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f18",
+      "baseline_id": "f18:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches reference hair; B has an abrupt jaw-to-neck color transition."
         },
         {
-          "pair_id": "f19",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "A",
-          "neck_seam": "tie",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": "A matches reference hair; B has an abrupt jaw-to-neck color transition."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f19",
+      "baseline_id": "f19:ghost_1_256+mask-mp",
+      "presentation": [
+        "candidate",
+        "baseline"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
           "reason": "A matches bald outline; scarf conceals much of both seams."
         },
         {
-          "pair_id": "f20",
-          "presented_order": [
-            "A",
-            "B"
-          ],
-          "hair_hairline": "B",
-          "neck_seam": "B",
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "tie",
+          "presented_first": "candidate",
+          "raw_preference": "tie",
+          "reason": "A matches bald outline; scarf conceals much of both seams."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "candidate",
+          "raw_preference": "A",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "pair_id": "f20",
+      "baseline_id": "f20:ghost_1_256+mask-mp",
+      "presentation": [
+        "baseline",
+        "candidate"
+      ],
+      "hair_hairline": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
           "reason": "B matches reference hair; A has more abrupt jaw-to-neck color."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
+        }
+      ],
+      "neck_seam": [
+        {
+          "judge": "chatgpt/dev pull-4004087d",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": "B matches reference hair; A has more abrupt jaw-to-neck color."
+        },
+        {
+          "judge": "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg",
+          "vote": "candidate",
+          "presented_first": "baseline",
+          "raw_preference": "B",
+          "reason": null
         }
       ]
     }
-  ],
-  "missing": "Second distinct blinded judge not collected. Do not decode order or read these votes before second judge independently records A/B results. No consensus or backfill."
+  ]
 }

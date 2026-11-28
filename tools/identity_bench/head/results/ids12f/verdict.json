@@ -1,0 +1,111 @@
+{
+  "cohort_problems": [],
+  "cohort_status": "PASS",
+  "gates": [
+    {
+      "contradictions": [],
+      "denominator": 20,
+      "fraction": 0.45,
+      "gate": "whole_head_and_pose",
+      "incomplete": [],
+      "not_passed": [],
+      "notes": {},
+      "passed": 9,
+      "status": "FAIL",
+      "threshold": 0.9
+    },
+    {
+      "denominator": 20,
+      "failing": [],
+      "gate": "edit_fence",
+      "incomplete": [],
+      "status": "PASS"
+    },
+    {
+      "denominator": 20,
+      "gate": "scale",
+      "incomplete": [],
+      "measured": 20,
+      "median_abs_rel_error": 0.056184006157740454,
+      "status": "PASS",
+      "threshold": 0.1
+    },
+    {
+      "candidate_wins": 40,
+      "expected_votes": 40,
+      "fraction": 1,
+      "gate": "new_hair_hairline",
+      "incomplete": [],
+      "per_judge_wins": {
+        "chatgpt/dev pull-4004087d": 20,
+        "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg": 20
+      },
+      "split_decisions": [],
+      "status": "PASS",
+      "threshold": 0.7,
+      "valid_votes": 40
+    },
+    {
+      "candidate_wins": 28,
+      "expected_votes": 40,
+      "fraction": 0.7,
+      "gate": "neck_seam",
+      "incomplete": [],
+      "per_judge_wins": {
+        "claude/dev session_01JsoPf3LEGiSht7DrwHj5Wg": 19,
+        "chatgpt/dev pull-4004087d": 9
+      },
+      "split_decisions": [
+        "f01",
+        "f02",
+        "f03",
+        "f04",
+        "f05",
+        "f07",
+        "f14",
+        "f15",
+        "f17",
+        "f19"
+      ],
+      "status": "PASS",
+      "threshold": 0.7,
+      "valid_votes": 40
+    },
+    {
+      "denominator": 20,
+      "disagreements": [],
+      "gate": "profile_identity",
+      "incomplete": [
+        "f01",
+        "f02",
+        "f03",
+        "f04",
+        "f05",
+        "f06",
+        "f07",
+        "f08",
+        "f09",
+        "f10",
+        "f11",
+        "f12",
+        "f13",
+        "f14",
+        "f15",
+        "f16",
+        "f17",
+        "f18",
+        "f19",
+        "f20"
+      ],
+      "outcomes": {},
+      "scored": 0,
+      "status": "INSUFFICIENT_EVIDENCE"
+    }
+  ],
+  "n_declared": 20,
+  "n_planned": 20,
+  "note": "Evaluator output over supplied records only; not a measured model-quality claim.",
+  "row_problems": [],
+  "rubric_revision": "IDS-12A@096f0796",
+  "verdict": "FAIL"
+}

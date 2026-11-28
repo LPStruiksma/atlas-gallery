@@ -1,6 +1,6 @@
 # IDS-12B — self-hosted whole-head engine deployment gate
 
-Status: **UNAVAILABLE / NOT MEASURED**. This is a deployment and evidence checklist, not a model-quality claim or an admission of a working full-head engine. Scope: [IDS-12B #773](https://github.com/LPStruiksma/atlas-gallery/issues/773), under [goal #467](https://github.com/LPStruiksma/atlas-gallery/issues/467). Quality gate: [HEAD_ACCEPTANCE.md](HEAD_ACCEPTANCE.md).
+Status: **UNAVAILABLE / candidate FAIL (hosted replay pending)**. This is a deployment and evidence checklist, not a model-quality claim or an admission of a working full-head engine. Scope: [IDS-12B #773](https://github.com/LPStruiksma/atlas-gallery/issues/773), under [goal #467](https://github.com/LPStruiksma/atlas-gallery/issues/467). Quality gate: [HEAD_ACCEPTANCE.md](HEAD_ACCEPTANCE.md).
 
 ## Admission prerequisites (operator-side, fail closed)
 
@@ -14,10 +14,10 @@ An admitted workflow must consume the target photograph, a *predeclared explicit
 
 | Evidence | Current status |
 | --- | --- |
-| Original-host model, encoder, runtime, adapter, workflow licence/provenance and exact hashes | NOT MEASURED / NOT VERIFIED |
+| Original-host model, encoder, runtime, adapter, workflow licence/provenance and exact hashes | Adapter dossier NOT VERIFIABLE (#1090); no admission |
 | Mocked protocol and all fail-closed paths in exact-head hosted Python CI | Activation path covered by `tools/ai_edit_server/tests/test_head_workflow.py` (mocked provider only; see the PR's exact-head CI) |
 | Repository verdict ledger (`head_workflow.HEAD_VERDICT_LEDGER`) | NOT_MEASURED (only #1092 may change it) |
-| Real, blinded, licence-cleared/synthetic 20+ pair whole-head acceptance under frozen IDS-12A rubric | NOT MEASURED |
+| Real, blinded, licence-cleared/synthetic 20+ pair whole-head acceptance under frozen IDS-12A rubric | Candidate FAIL (9/20 whole-head/pose; 0/20 two-source profile identity); [expected report and replay gate](../../tools/identity_bench/head/results/ids12f/VERDICT.md), exact-head replay pending |
 | User-advertised whole-head capability | UNAVAILABLE |
 
 No GPU/model inference, adapter provenance check, paid compute or private-media transfer is authorized or reported by this document. Only exact-head CI results and a separately linked, independently reviewable benchmark may change the above evidence statuses.
@@ -30,7 +30,7 @@ or that a head swap succeeded. Configuration requires independent, affirmative
 licence, provenance, safeguards and IDS-12A acceptance gates plus exact hashes
 for the original-host model, encoder, runtime, adapter and API workflow. Those
 artifacts are absent here, their facts remain **NOT VERIFIED**, and the real 20+
-pair benchmark remains **NOT MEASURED**. Consequently no production deployment
+pair benchmark has a **candidate FAIL** pending exact-head hosted replay. Consequently no production deployment
 may currently set all gates true or advertise `full_head`.
 
 Startup and each attempted edit recheck all artifact bytes. The scaffold requires
