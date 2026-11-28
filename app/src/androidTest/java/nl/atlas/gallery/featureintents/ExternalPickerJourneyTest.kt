@@ -6,12 +6,15 @@ import android.content.ComponentName
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.res.Configuration
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import android.view.WindowManager
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -66,7 +69,24 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
     private val media = PickerMedia()
     private val theme get() = if (dark) "dark" else "light"
 
-    @Before fun setUp() = media.create()
+    @Before fun setUp() {
+        // The S24/display and night-mode rules issue shell commands before this test,
+        // but Android applies their configurations asynchronously. Launching the picker
+        // first can recreate its Compose root after awaitTileSteady() but before tap().
+        // Wait for the requested *observed* device state, not for a fixed delay.
+        compose.awaitThat("S24 display and $theme theme before picker launch", timeoutMs = 30_000L) {
+            val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val configuration = appContext.resources.configuration
+            val expectedNight = if (dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+            @Suppress("DEPRECATION")
+            val display = (appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+            val displaySize = Point().also { display.getRealSize(it) }
+            (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == expectedNight &&
+                configuration.densityDpi == 450 &&
+                displaySize.x == 1080 && displaySize.y == 2340
+        }
+        media.create()
+    }
     @After fun tearDown() = media.delete()
 
     @Test fun singlePickReturnsTheOneChosenPhotoWithAReadGrant() {
