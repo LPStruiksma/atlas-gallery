@@ -49,6 +49,7 @@ import nl.atlas.gallery.testkit.advanceVirtualTime
 import nl.atlas.gallery.testkit.awaitScreenStill
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.withAnimatorScale
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -475,6 +476,29 @@ class PinchCrossFlowEvidenceTest {
         assertAnchoredAndStill(tag, focusRoot, "reduced-motion commit 4->7")
     }
 
+    @Test fun pinchWorkGateRejectsMissingAndOverBudgetLookupSamples() {
+        fun sample(wall: Long, cpu: Long?) = PinchWorkSample(wall * 1_000_000, cpu?.times(1_000_000))
+        assertTrue(pinchWorkPasses("bitmaps", listOf(sample(31, 4), sample(2, 1), sample(10, 10))))
+        assertTrue(!pinchWorkPasses("bitmaps", emptyList()))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, null))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, 0))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, -1))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(0, 1))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(11, 11), sample(2, 1))))
+        assertTrue(!pinchWorkPasses("bitmaps", List(10) { sample(2, 1) } + sample(11, 11)))
+    }
+
+    @Test fun pinchWorkGateUsesMedianOnlyBelowTenSamples() {
+        fun wall(ms: Long) = PinchWorkSample(ms * 1_000_000, null)
+        assertTrue(pinchWorkPasses("draw", listOf(wall(1), wall(2), wall(18))))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(17), wall(18), wall(19))))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(16), wall(18))))
+        assertTrue(pinchWorkPasses("pose", List(9) { wall(16) } + wall(18)))
+        assertTrue(!pinchWorkPasses("geometry", List(8) { wall(16) } + List(2) { wall(18) }))
+        assertTrue(!pinchWorkPasses("pose", emptyList()))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(-1), wall(2), wall(3))))
+    }
+
     /**
      * Brief state "huge library": 150,000 rows (64 shared synthetic images),
      * pinch 4 → 7 → 4 with FrameMetrics recorded. Reported on logcat
@@ -490,11 +514,13 @@ class PinchCrossFlowEvidenceTest {
             repeat(3) { grid.performTouchInput { swipeUp() }; compose.waitForIdle() }
             compose.awaitNeighboursPlanned(60_000L)
         }
-        // Attributable cost (#711 review): main-thread time inside the pinch
-        // code itself, by kind, independent of the emulator's frame cost.
-        val spent = Collections.synchronizedMap(HashMap<String, MutableList<Double>>())
-        PinchCrossTiming.sink = { kind, nanos ->
-            spent.getOrPut(kind) { Collections.synchronizedList(ArrayList()) } += nanos / 1_000_000.0
+        // #1047: bitmap wall time includes off-CPU delay on shared emulators.
+        // Budget the thread CPU per lookup; retain paired wall values as evidence.
+        val spent = HashMap<String, MutableList<PinchWorkSample>>()
+        PinchCrossTiming.sink = { kind, wall, cpu ->
+            synchronized(spent) {
+                spent.getOrPut(kind) { ArrayList() }.add(PinchWorkSample(wall, cpu))
+            }
         }
         val ms = try { recordFrames {
             val (_, local) = focusPoint(.6f)
@@ -509,16 +535,15 @@ class PinchCrossFlowEvidenceTest {
             back.release()
             grid.assert(columns(4))
         } } finally { PinchCrossTiming.sink = null }
-        val own = synchronized(spent) { spent.mapValues { (_, v) -> synchronized(v) { v.toDoubleArray() } } }
+        val own = synchronized(spent) { spent.mapValues { (_, v) -> v.toList() } }
         val ownJson = JSONObject()
-        for ((kind, v) in own) ownJson.put(kind, JSONObject().put("n", v.size)
-            .put("p90_ms", BenchmarkReport.round1(BenchmarkReport.percentile(v, 90.0)))
-            .put("max_ms", BenchmarkReport.round1(v.max())))
+        for ((kind, samples) in own) ownJson.put(kind, pinchWorkReport(kind, samples))
         val pinchP90 = BenchmarkReport.percentile(ms, 90.0)
         val scrollP90 = BenchmarkReport.percentile(scrollMs, 90.0)
         val report = JSONObject()
             .put("unit", "711-pinch-150k")
-            .put("schema", 1)
+            .put("schema", 2)
+            .put("work_method", "bitmaps: every thread-CPU sample <= 10 ms; other kinds: wall p90 for n >= 10, median otherwise, <= 16.6 ms; bitmap wall is diagnostic")
             .put("inputs", "150000 synthetic rows, 64 shared 32px images, 1080x2340 @450dpi")
             .put("emulator", BenchmarkReport.isEmulator())
             .put("frames", ms.size)
@@ -540,15 +565,13 @@ class PinchCrossFlowEvidenceTest {
         assertTrue("pinch p90 within 2x scroll p90 (or 50 ms): $report",
             pinchP90 <= maxOf(2.0 * scrollP90, 50.0))
         assertTrue("no pinch frame over 700 ms: $report", ms.max() < 700.0)
-        // The pinch code's own per-frame work (pose of each layer) and its
-        // per-level work (ghost geometry, cache lookup, draw recording) each
-        // fit one 60 Hz frame at p90 even on the emulator.
-        for (kind in listOf("pose", "geometry", "draw")) {
-            val v = own[kind]
-            assertTrue("pinch code '$kind' recorded: $report", v != null && v.isNotEmpty())
+        // Require every work kind, including bitmap lookups. No missing or
+        // unavailable clock sample may be mistaken for a fast lookup.
+        for (kind in listOf("pose", "geometry", "draw", "bitmaps")) {
+            assertTrue("pinch code '$kind' recorded: $report", !own[kind].isNullOrEmpty())
         }
-        for ((kind, v) in own) assertTrue("pinch code '$kind' p90 <= 16.6 ms: $report",
-            BenchmarkReport.percentile(v, 90.0) <= 16.6)
+        for ((kind, samples) in own) assertTrue("pinch code '$kind' work gate: $report",
+            pinchWorkPasses(kind, samples))
     }
 
     /** Total frame durations (ms) drawn while [body] runs. */
@@ -597,6 +620,70 @@ class PinchCrossFlowEvidenceTest {
                 providerVersion = SYNTHETIC_PROVIDER_VERSION, generationModified = 1L)
         }
     }
+}
+
+/** Paired clock readings from a single measured call; null CPU is unavailable. */
+private data class PinchWorkSample(val wallNanos: Long, val cpuNanos: Long?)
+
+private fun pinchWorkBudgetMs(kind: String) = if (kind == "bitmaps") 10.0 else 16.6
+
+private fun pinchWorkMethod(kind: String, n: Int) = when {
+    kind == "bitmaps" -> "each_thread_cpu"
+    n >= 10 -> "wall_p90_nearest_rank"
+    else -> "wall_median"
+}
+
+/** Evaluate unrounded values. Small-n median averages the middle pair for even n. */
+private fun pinchWorkGateMs(kind: String, samples: List<PinchWorkSample>): Double? {
+    if (samples.isEmpty() || samples.any { it.wallNanos <= 0L }) return null
+    if (kind == "bitmaps") {
+        if (samples.any { (it.cpuNanos ?: 0L) <= 0L }) return null
+        return samples.maxOf { checkNotNull(it.cpuNanos) } / 1e6
+    }
+    val wall = samples.map { it.wallNanos / 1e6 }.sorted()
+    if (wall.size >= 10) return BenchmarkReport.percentile(wall.toDoubleArray(), 90.0)
+    val middle = wall.size / 2
+    return if (wall.size % 2 == 1) wall[middle] else (wall[middle - 1] + wall[middle]) / 2.0
+}
+
+private fun pinchWorkPasses(kind: String, samples: List<PinchWorkSample>): Boolean =
+    pinchWorkGateMs(kind, samples)?.let { it <= pinchWorkBudgetMs(kind) } ?: false
+
+private fun pinchWorkReport(kind: String, samples: List<PinchWorkSample>): JSONObject {
+    val wall = samples.map { it.wallNanos / 1e6 }.toDoubleArray()
+    val json = JSONObject().put("n", samples.size)
+        .put("gate_method", pinchWorkMethod(kind, samples.size))
+        .put("gate_budget_ms", pinchWorkBudgetMs(kind))
+        .put("gate_value_ms", pinchWorkGateMs(kind, samples) ?: JSONObject.NULL)
+    if (wall.isNotEmpty()) {
+        json.put("p50_ms", BenchmarkReport.round1(BenchmarkReport.percentile(wall, 50.0)))
+            .put("p90_ms", BenchmarkReport.round1(BenchmarkReport.percentile(wall, 90.0)))
+            .put("max_ms", BenchmarkReport.round1(wall.max()))
+    }
+    if (samples.size < 10) {
+        json.put("wall_samples_ns", JSONArray(samples.map { it.wallNanos }))
+    }
+    if (kind == "bitmaps") {
+        val paired = samples.filter { it.wallNanos > 0 && (it.cpuNanos ?: 0) > 0 }
+        val cpu = paired.map { checkNotNull(it.cpuNanos) / 1e6 }.toDoubleArray()
+        // Signed difference; adjacent clock reads/resolution can make a small
+        // negative value. It is diagnostic, not proof of scheduling or locking.
+        val offCpu = paired.map { (it.wallNanos - checkNotNull(it.cpuNanos)) / 1e6 }.toDoubleArray()
+        json.put("valid_pairs", paired.size)
+            .put("samples", JSONArray(samples.map {
+                JSONObject().put("wall_ns", it.wallNanos)
+                    .put("cpu_ns", it.cpuNanos ?: JSONObject.NULL)
+                    .put("off_cpu_ns", it.cpuNanos?.let { cpuNs -> it.wallNanos - cpuNs } ?: JSONObject.NULL)
+            }))
+        if (cpu.isNotEmpty()) {
+            json.put("cpu_p50_ms", BenchmarkReport.round1(BenchmarkReport.percentile(cpu, 50.0)))
+                .put("cpu_p90_ms", BenchmarkReport.round1(BenchmarkReport.percentile(cpu, 90.0)))
+                .put("cpu_max_ms", BenchmarkReport.round1(cpu.max()))
+                .put("off_cpu_p50_ms", BenchmarkReport.round1(BenchmarkReport.percentile(offCpu, 50.0)))
+                .put("off_cpu_p90_ms", BenchmarkReport.round1(BenchmarkReport.percentile(offCpu, 90.0)))
+        }
+    }
+    return json
 }
 
 /**

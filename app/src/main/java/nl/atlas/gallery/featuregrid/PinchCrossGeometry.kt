@@ -307,13 +307,20 @@ internal class UniformGridLevel(
  * where [measure] is a plain call.
  */
 internal object PinchCrossTiming {
-    @Volatile var sink: ((kind: String, nanos: Long) -> Unit)? = null
+    // Thread CPU is sampled only for bitmap lookup, and only with a test sink.
+    // A null CPU duration means unavailable or invalid clock readings.
+    @Volatile var sink: ((kind: String, wallNanos: Long, cpuNanos: Long?) -> Unit)? = null
 
     inline fun <T> measure(kind: String, block: () -> T): T {
         val record = sink ?: return block()
+        val bitmapLookup = kind == "bitmaps"
+        val cpuStart = if (bitmapLookup) android.os.Debug.threadCpuTimeNanos() else -1L
         val start = System.nanoTime()
         val result = block()
-        record(kind, System.nanoTime() - start)
+        val wall = System.nanoTime() - start
+        val cpuEnd = if (bitmapLookup) android.os.Debug.threadCpuTimeNanos() else -1L
+        val cpu = if (cpuStart >= 0L && cpuEnd >= cpuStart) cpuEnd - cpuStart else null
+        record(kind, wall, cpu)
         return result
     }
 }
