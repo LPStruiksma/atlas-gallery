@@ -3,7 +3,6 @@ package nl.atlas.gallery.featureeditor.render
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
-import android.util.Log
 import androidx.core.graphics.ColorUtils
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -99,7 +98,7 @@ class FilterRendererTest {
                                     val got = rgb(expected.getPixel(index * 8 + 4, 4))
                                     for (c in 0..2) referenceError = maxOf(referenceError, abs(got[c] - wanted[c]) * 255)
                                 }
-                                Log.i("ATLAS_EDIT7", "id=$id hash=$hash strength=$strength maxDeltaE76=$maxDeltaE referenceError8bit=$referenceError")
+                                RenderTestKit.log("EDIT7 id=$id hash=$hash strength=$strength maxDeltaE76=$maxDeltaE referenceError8bit=$referenceError")
                                 if (!(maxDeltaE <= 1.0 && referenceError <= 1.0))
                                     failures += "$id strength=$strength maxDeltaE76=$maxDeltaE referenceError8bit=$referenceError"
                                 if (strength == 0.0 && RenderTestKit.diff(input, actual).first > 1)
@@ -113,7 +112,7 @@ class FilterRendererTest {
                                             try {
                                                 val previewDelta = maxDifference(expected, shown)
                                                 val pixels = swatches.indices.joinToString(",") { "%06x".format(shown.getPixel(it * 8 + 4, 4) and 0xffffff) }
-                                                Log.i("ATLAS_EDIT7", "preview id=$id hash=$hash strength=$strength maxDeltaE76=$previewDelta swatches=$pixels")
+                                                RenderTestKit.log("EDIT7 preview id=$id hash=$hash strength=$strength maxDeltaE76=$previewDelta swatches=$pixels")
                                                 if (previewDelta > 1.0) failures += "$id preview maxDeltaE76=$previewDelta"
                                             } finally { shown.recycle() }
                                         }
