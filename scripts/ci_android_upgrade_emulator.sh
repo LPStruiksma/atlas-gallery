@@ -843,6 +843,31 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   adb shell pm clear nl.atlas.gallery
   echo "PASS: #31 separate-process People, visual, Settings, Photos and Albums relaunch"
 
+  # #1021: pause the real Activity with fewer than SAVE_EVERY samples, then
+  # force-stop and restore in a second instrumentation process. This is a
+  # process-death surrogate for swipe-kill, not an in-process collector reset.
+  run_perf_persistence_phase() {
+    local phase="$1" method="$2"
+    local capture="/tmp/atlas-perf-persistence-$phase.txt"
+    adb shell am instrument -w -r -e atlasPerfPersistencePhase "$phase" \
+      -e class "nl.atlas.gallery.PerformanceProcessRelaunchTest#$method" "$RUNNER" \
+      > "$capture" 2>&1 || true
+    cat "$capture"
+    if ! grep -Fq 'OK (1 test)' "$capture"; then
+      echo "::error::#1021 $phase performance process persistence failed"
+      timeout 30 adb logcat -d -b crash -t 500 || true
+      return 1
+    fi
+  }
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+  run_perf_persistence_phase seed seedBeforeForceStop
+  adb shell am force-stop nl.atlas.gallery
+  run_perf_persistence_phase verify verifyAfterForceStop
+  # As above, clear only this disposable CI emulator's synthetic app data.
+  adb shell pm clear nl.atlas.gallery
+  echo "PASS: #1021 real pause and separate-process performance restoration"
+
   # #620: a true Android photo-grant loss. Revoking a runtime permission kills
   # the app process, so seed and verify are separate instrumentation runs with
   # a real `pm revoke` between them. Invented PNGs and app-private data only.

@@ -19,6 +19,11 @@ class PerformanceAggregates(
     interface PerformanceStore {
         fun load(): Map<String, List<Double>>
         fun save(metric: String, values: List<Double>)
+        /** Lifecycle boundary: true only when the store reports success. */
+        fun saveDurably(metric: String, values: List<Double>): Boolean {
+            save(metric, values)
+            return true
+        }
     }
 
     data class Summary(
@@ -31,9 +36,14 @@ class PerformanceAggregates(
         (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
     private val unsaved = HashMap<String, Int>()
+    // A later asynchronous periodic save cannot acknowledge a failed durable write.
+    private val durabilityRetries = HashSet<String>()
     // Nothing is written until restore() has merged the saved history, so an early save
     // cannot replace the previous run's samples before they are read back.
     private var restored = false
+
+    /** Whether startup restoration has finished for this collector. */
+    @Synchronized internal fun hasRestored(): Boolean = restored
 
     /**
      * Puts samples saved by earlier runs in front of anything recorded since start, keeping
@@ -65,14 +75,24 @@ class PerformanceAggregates(
         return true
     }
 
-    /** Writes any samples not yet saved, so a normal shutdown loses nothing. */
+    /** Commits pending samples at pause; periodic writes remain asynchronous. */
     @Synchronized fun flush() {
         val store = store ?: return
         if (!restored) return
         samples.forEach { (metric, ring) ->
-            if ((unsaved[metric] ?: 0) > 0) {
-                store.save(metric, ring.toList())
-                unsaved[metric] = 0
+            if ((unsaved[metric] ?: 0) > 0 || metric in durabilityRetries) {
+                // Optional telemetry must not crash the activity on a persistence failure.
+                val saved = try {
+                    store.saveDurably(metric, ring.toList())
+                } catch (_: RuntimeException) {
+                    false
+                }
+                if (saved) {
+                    unsaved[metric] = 0
+                    durabilityRetries.remove(metric)
+                } else {
+                    durabilityRetries.add(metric)
+                }
             }
         }
     }
