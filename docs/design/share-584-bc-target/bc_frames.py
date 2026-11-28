@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SHARE-1BC-E2 (#1128, after #1118): focused wallpaper/copy evidence for Atlas-owned states.
+"""SHARE-1BC-E3 (#1131, after #1128 and #1118): focused wallpaper/copy evidence for Atlas-owned states.
 
 Self-contained: draws every frame from deterministic shapes, writes SVG,
 geometry.json, PNG and annotated geometry overlays, then verifies them.
@@ -8,7 +8,9 @@ geometry.json, PNG and annotated geometry overlays, then verifies them.
 
 Drawn: the viewer More menu (with Set as wallpaper and Copy image) for each
 eligibility case, the restricted (EXTERNAL, SECURE) and video viewers where B/C
-are never offered, and the Atlas-owned B/C error dialogs. Android owns the wallpaper picker and
+are never offered, and the Atlas-owned B/C error dialogs. E3 adds a persistent trailing
+scroll track and thumb to every scrollable More menu (and none to a menu that fits), so
+overflow is discoverable without relying on a cut-off row. Android owns the wallpaper picker and
 the clipboard confirmation; they are not drawn here (see the v3 baseline).
 
 This is a synthetic design proposal. It is not an Android screenshot, a Samsung
@@ -48,6 +50,16 @@ MENU_SIDE_GAP = 8 * DP       # horizontal: >= 8 dp inside the safe left and righ
 MENU_PAD_Y = 8 * DP          # list padding above the first and below the last item
 ITEM_PAD_X = 50              # label inset (as v3)
 ITEM_PAD_Y = 47.6            # per side; 100 % item = 150 px as in v3
+# Scroll cue (#1131): a persistent, non-interactive trailing track and thumb inside the
+# scrolling rows, drawn only when the scroll range is positive, independent of clipping.
+# Adapted from the error dialog's position bar. Rows give up a trailing gutter so no label
+# or active hit target overlaps the cue. Colours are palette tokens, >= 3:1 vs the surface.
+CUE_GUTTER = 14 * DP         # reserved at the trailing edge of the rows, inside the 8 dp row inset
+CUE_TRACK_W = 2 * DP         # thin rail (ink-secondary), always visible while scrollable
+CUE_THUMB_W = 6 * DP         # thumb (ink), three times the rail width
+CUE_INSET_Y = 4 * DP         # track inset from the viewport's top and bottom
+CUE_MIN_THUMB = 16 * DP
+CUE_MIN_CONTRAST = 3.0
 FONT_FILES = {
     'normal': '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
     'bold': '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
@@ -220,6 +232,7 @@ class Frame:
         self.modal = self.dismiss = self.focus_ring = self.photo_px = self.scroll = None
         self.status, self.clips = {}, 0
         self.menu_limits = None
+        self.cue = None
 
     # primitives
     def rect(self, x, y, w, h, fill, rx=0, opacity=None, stroke=None, sw=None):
@@ -428,7 +441,7 @@ class Frame:
             'inert_background_controls': [c['id'] for c in self.inert],
             'focus_ring_px': r1(self.focus_ring) if self.focus_ring else None,
             'returns_to': f'same viewer item ({ITEM["id"]}), viewer state unchanged',
-            'status': self.status, 'menu_limits': self.menu_limits,
+            'status': self.status, 'menu_limits': self.menu_limits, 'scroll_cue': self.cue,
         }
 
 
@@ -444,6 +457,34 @@ def menu_layout(items, s):
         lines = wrap(label, size, w - 2 * ITEM_PAD_X)
         rows.append((cid, label, origin, lines, len(lines) * size * 1.3 + 2 * ITEM_PAD_Y))
     return size, w, rows
+
+
+def scroll_cue(viewport, overflow, dy):
+    """Trailing track/thumb for a scrolling column, or None when the column fits.
+
+    ``viewport`` is [x, y, w, h] of the scrolling rows, ``overflow`` the scroll range
+    (content height minus viewport height) and ``dy`` the scroll offset. The thumb extent is
+    viewport / content and its position is dy / overflow along the track, so space above the
+    thumb means content above and space below means content below. Independent of where
+    row boundaries fall."""
+    if overflow <= 0.5:
+        return None
+    x, y, w, h = viewport
+    gutter = [x + w - 8 - CUE_GUTTER, y, CUE_GUTTER, h]
+    cx = gutter[0] + CUE_GUTTER / 2
+    ty, th = y + CUE_INSET_Y, h - 2 * CUE_INSET_Y
+    thumb_h = max(CUE_MIN_THUMB, th * h / (h + overflow))
+    frac = min(max(dy / overflow, 0.0), 1.0)
+    thumb_y = ty + (th - thumb_h) * frac
+    return {
+        'role': 'decorative scroll position indicator; non-interactive, not focusable, no semantics node',
+        'persistent': True, 'gutter_px': r1(gutter),
+        'track_px': r1([cx - CUE_TRACK_W / 2, ty, CUE_TRACK_W, th]),
+        'thumb_px': r1([cx - CUE_THUMB_W / 2, thumb_y, CUE_THUMB_W, thumb_h]),
+        'scroll_range_px': round(overflow, 1), 'offset_px': round(dy, 1),
+        'content_px': round(h + overflow, 1), 'viewport_h_px': round(h, 1),
+        'content_above': dy > 0.5, 'content_below': dy < overflow - 0.5,
+    }
 
 
 def frame_menu(name, theme, orientation, scale, e, scroll='top'):
@@ -494,8 +535,9 @@ def frame_menu(name, theme, orientation, scale, e, scroll='top'):
     overflow = content_h - h
     dy = 0 if scroll == 'top' else overflow if scroll == 'end' else min(float(scroll), overflow)
     position = scroll if scroll in ('top', 'end') else 'middle'
+    surface = t['mist'] if theme == 'dark' else t['ground']
     fr.body.append('<g class="modal">')
-    fr.rect(x, top, w, h, t['mist'] if theme == 'dark' else t['ground'], rx=44, stroke=t['ink2'], sw=3)
+    fr.rect(x, top, w, h, surface, rx=44, stroke=t['ink2'], sw=3)
     fr.modal = [x, top, w, h]
     y = top + MENU_PAD_Y
     if identity:
@@ -509,24 +551,40 @@ def frame_menu(name, theme, orientation, scale, e, scroll='top'):
         fr.rect(x + 24, y + ident_h - 1.5, w - 48, 3, t['ink2'])
         y += ident_h
     viewport = [x, y, w, top + h - 2 - y]
+    cue = scroll_cue(viewport, overflow, dy)
+    row_w = w - 16 - (CUE_GUTTER if cue else 0)   # rows give the cue its gutter
     if overflow > 0:
         fr.clip_open(viewport, dy)
         fr.scroll = {'container': 'menu rows (identity header pinned)', 'content_px': round(content_h, 1),
                      'viewport_px': r1(viewport), 'offset_px': round(dy, 1), 'position': position,
+                     'cue': 'persistent trailing track and thumb (scroll_cue); a cut-off row is not the cue',
                      'reveal': 'focus or a swipe scrolls the rows; every item can be fully shown; '
-                               'a partly shown row is a scroll cue only: a tap or focus scrolls it fully '
-                               'into view and never activates it'}
+                               'a partly shown row never activates: a tap or focus scrolls it fully '
+                               'into view first'}
     for cid, label, origin, lines, ih in rows:
         for i, line in enumerate(lines):
             fr.text(x + ITEM_PAD_X, y + ITEM_PAD_Y + size * 0.95 + i * size * 1.3, line, size, t['ink'],
                     maxw=w - 2 * ITEM_PAD_X)
-        vr, extra = _visible([x + 8, y, w - 16, ih], viewport, dy)
+        vr, extra = _visible([x + 8, y, row_w, ih], viewport, dy)
+        band = [x + 8, y + ITEM_PAD_Y - dy, row_w, ih - 2 * ITEM_PAD_Y]   # where the label is drawn
+        extra['label_visible'] = inter(band, viewport) is not None
         extra['activation'] = 'activate' if extra.get('visibility') == 'full' else (
             'reveal-only' if extra.get('visibility') == 'partial' else 'none')
         fr.control(cid, 'menuitem', label, vr, lines=len(lines), **extra)
         y += ih
     if overflow > 0:
         fr.clip_close()
+    if cue:
+        # drawn outside the scrolling group, so it never moves with the rows
+        tr, tb = cue['track_px'], cue['thumb_px']
+        fr.body.append(f'<rect class="scroll-track" x="{f(tr[0])}" y="{f(tr[1])}" width="{f(tr[2])}" '
+                       f'height="{f(tr[3])}" rx="{f(tr[2] / 2)}" fill="{t["ink2"]}"/>')
+        fr.body.append(f'<rect class="scroll-thumb" x="{f(tb[0])}" y="{f(tb[1])}" width="{f(tb[2])}" '
+                       f'height="{f(tb[3])}" rx="{f(tb[2] / 2)}" fill="{t["ink"]}"/>')
+        cue.update({'track_fill': t['ink2'], 'thumb_fill': t['ink'], 'surface_fill': surface,
+                    'track_contrast': round(contrast(t['ink2'], surface), 2),
+                    'thumb_contrast': round(contrast(t['ink'], surface), 2)})
+        fr.cue = cue
     fr.dismiss = 'Tap outside the menu or system Back closes it with no action; focus returns to More'
     fr.status = {'menu_items': [{'id': c, 'label': l, 'origin': o} for c, l, o in items],
                  'menu_width_px': round(w, 1), 'menu_width_rule': '112-280 dp; labels wrap at 280 dp',
@@ -541,7 +599,7 @@ def _visible(rect, viewport, dy):
     """Return (visible_rect, extra) for a row drawn at ``rect`` inside a scrolled viewport."""
     shown = [rect[0], rect[1] - dy, rect[2], rect[3]]
     vis = inter(shown, viewport)
-    if vis is None:
+    if vis is None or vis[3] < 0.5:   # a sub-pixel sliver at an exact row boundary is not shown
         return None, {'visibility': 'offscreen', 'content_rect_px': r1(rect)}
     if abs(vis[3] - shown[3]) > 0.5:
         return vis, {'visibility': 'partial', 'content_rect_px': r1(rect)}
@@ -718,6 +776,16 @@ def build():
                     cx, cy, cw, ch = missed[0]['content_rect_px']
                     add(frame_menu_c(name + '-scrolled-mid', theme, orientation, scale, e,
                                      cy + ch - (vp[1] + vp[3]) + 1))
+                # exact-boundary witness (#1131): the viewport's bottom edge falls exactly on a
+                # row boundary while more rows follow, so no row is cut there
+                vp = fr.scroll['viewport_px']
+                overflow = fr.scroll['content_px'] - fr.modal[3]
+                rows = [c.get('content_rect_px') or c['rect_px'] for c in fr.controls if c['role'] == 'menuitem']
+                for r in rows[:-1]:
+                    dy = r[1] + r[3] - (vp[1] + vp[3])
+                    if 0.5 < dy < overflow - 0.5:
+                        add(frame_menu_c(name + '-boundary', theme, orientation, scale, e, dy))
+                        break
             else:
                 add(frame_error(fr.stage, fr.theme, fr.orientation, fr.scale, 'end'))
     return frames
@@ -736,13 +804,27 @@ def write(frames):
     for fr in frames:
         (svg_dir / f'{fr.name}.svg').write_text(fr.svg(), encoding='utf-8')
     geometry = {
-        'schema': 2, 'version': 'SHARE-1BC-E2 (#1128)',
+        'schema': 3, 'version': 'SHARE-1BC-E3 (#1131)',
         'source': 'synthetic coordinates from bc_frames.py; not S24+ runtime measurement',
         'density_px_per_dp': DENSITY, 'min_hit_px': MIN_HIT, 'min_photo_visible': MIN_PHOTO_VISIBLE,
         'palette': PALETTE,
         'menu_limits_rule': {'vertical_margin_dp': 48, 'vertical_margin_from': 'safe window (insets counted once)',
                              'horizontal_min_gap_dp': 8, 'horizontal_containment': 'safe window',
                              'width_dp': [112, 280], 'min_row_dp': 48},
+        'scroll_cue_rule': {
+            'shown_iff': 'scroll range > 0 (content taller than the rows viewport); never on a menu that fits',
+            'independent_of': 'where row boundaries fall; a cut-off row is not the cue',
+            'gutter_dp': 14, 'track_width_dp': 2, 'thumb_width_dp': 6, 'inset_dp': 4, 'min_thumb_dp': 16,
+            'thumb_extent': 'viewport / content', 'thumb_position': 'offset / scroll range',
+            'min_contrast_vs_surface': CUE_MIN_CONTRAST,
+            'accessibility': 'decorative: no semantics node, not focusable, not in focus order, not a touch '
+                             'target; scroll is exposed by the rows container (vertical scroll axis range and '
+                             'scroll actions); focus on a partly shown or offscreen row scrolls it fully into '
+                             'view before it can activate',
+            'runtime_obligation': 'Compose Column/LazyColumn have no built-in scrollbar: production must draw '
+                                  'this track and thumb from the rows ScrollState (value/maxValue), keep it '
+                                  'persistent (no fade), hide it when maxValue == 0, and keep the gutter out of '
+                                  'row hit targets. TalkBack behaviour is not demonstrated by these drawings.'},
         'access_modes': ACCESS,
         'eligibility_matrix': eligibility_matrix(),
         'activation_rules': ACTIVATION_RULES,
@@ -775,6 +857,9 @@ def annotate(g, png_bytes):
     if g['scroll']:
         x, y, w, h = g['scroll']['viewport_px']
         d.rectangle([x, y, x + w, y + h], outline=(0, 170, 255), width=3)
+    if g.get('scroll_cue'):
+        x, y, w, h = g['scroll_cue']['gutter_px']
+        d.rectangle([x, y, x + w, y + h], outline=(255, 210, 0), width=3)
     for n, c in enumerate(g['controls'], 1):
         if not c['rect_px']:
             continue
@@ -936,7 +1021,7 @@ def verify_frame(g, svg, png, bg, palette, errors):
             errors.append(f'{name}: More menu drawn with no item')
         if e.get('access') != 'LIBRARY' and labels:
             errors.append(f'{name}: menu offered outside LIBRARY access')
-        checks += 1 + verify_menu_limits(g, errors)
+        checks += 1 + verify_menu_limits(g, errors) + verify_cue(g, svg, png, errors)
         if (g['font_scale'] >= 1.5) != ('menu-identity' in ids):
             errors.append(f'{name}: identity row must appear exactly when font scale >= 1.5')
         ident = next((c for c in controls if c['id'] == 'menu-identity'), None)
@@ -962,6 +1047,147 @@ def verify_frame(g, svg, png, bg, palette, errors):
         if g['scroll']['position'] == 'top' and g['flow'] == 'BC' and not hidden:
             errors.append(f'{name}: declared scroll but every item is fully visible')
     return checks, ratios, sizes
+
+
+def _cue_nodes(svg):
+    out = {'scroll-track': [], 'scroll-thumb': []}
+    for node, _, modal, viewport, dy in walk(svg):
+        cls = (node.get('class') or '').split()
+        for k in out:
+            if k in cls:
+                out[k].append((node, modal, viewport, dy))
+    return out
+
+
+def verify_cue(g, svg, png, errors):
+    """#1131: a persistent trailing track/thumb iff the rows can scroll, placed by position."""
+    name = g['file']
+    found = []
+    nodes = _cue_nodes(svg)
+    overflow = (g['scroll']['content_px'] - g['modal_px'][3]) if g['scroll'] else 0
+    cue = g.get('scroll_cue')
+    scrollable = overflow > 0.5
+    if not scrollable:
+        if cue or nodes['scroll-track'] or nodes['scroll-thumb']:
+            found.append('scroll cue drawn on a menu that fits (no scroll range)')
+        errors.extend(f'{name}: {m}' for m in found)
+        return 1
+    if not cue or len(nodes['scroll-track']) != 1 or len(nodes['scroll-thumb']) != 1:
+        errors.append(f'{name}: scrollable menu has no single persistent track and thumb')
+        return 1
+    drawn = {}
+    for k, key in (('scroll-track', 'track_px'), ('scroll-thumb', 'thumb_px')):
+        node, modal, viewport, dy = nodes[k][0]
+        r = [float(node.get(a)) for a in ('x', 'y', 'width', 'height')]
+        if not modal or viewport is not None or dy:
+            found.append(f'{k} is not drawn on the surface outside the scrolling rows')
+        if any(abs(a - b) > 0.11 for a, b in zip(r, cue[key])):
+            found.append(f'{k} drawn at {r1(r)}, geometry says {cue[key]}')
+        drawn[k] = r
+    tr, tb = drawn['scroll-track'], drawn['scroll-thumb']
+    vp = g['scroll']['viewport_px']
+    L, T, R, B = g['insets_ltrb_px']
+    W, H = g['px']
+    for k, r in drawn.items():
+        if not inside(r, vp) or not inside(r, g['modal_px']) or not inside(r, [L, T, W - L - R, H - T - B]):
+            found.append(f'{k} is not inside the rows viewport, surface and safe window')
+        if r[0] < vp[0] + vp[2] - 8 - CUE_GUTTER - 0.5:
+            found.append(f'{k} is not at the trailing edge')
+    if tb[1] < tr[1] - 0.2 or tb[1] + tb[3] > tr[1] + tr[3] + 0.2 or abs((tb[0] + tb[2] / 2) - (tr[0] + tr[2] / 2)) > 0.2:
+        found.append('thumb leaves its track')
+    if tb[2] < 2 * tr[2]:
+        found.append('thumb is not visibly wider than the track')
+    # direction and position, recomputed from the scroll offset
+    off = g['scroll']['offset_px']
+    above, below = tb[1] - tr[1], tr[1] + tr[3] - tb[1] - tb[3]
+    has_above, has_below = off > 0.5, off < overflow - 0.5
+    if (above > 1) != has_above or (below > 1) != has_below:
+        found.append(f'thumb direction wrong at offset {off}/{overflow:.1f}: space above {above:.1f}, below {below:.1f}')
+    if above + below > 0 and abs(above / (above + below) - off / overflow) > 0.01:
+        found.append('thumb position does not match offset / scroll range')
+    want_h = max(CUE_MIN_THUMB, tr[3] * vp[3] / (vp[3] + overflow))
+    if abs(tb[3] - want_h) > 1:
+        found.append(f'thumb extent {tb[3]:.1f}px != viewport/content {want_h:.1f}px')
+    pos = g['scroll']['position']
+    if (pos == 'top') != (not has_above) or (pos == 'end') != (not has_below):
+        found.append(f'declared position {pos} disagrees with offset')
+    # reserved gutter: no row hit target and no label touches the cue
+    gut = cue['gutter_px']
+    for c in g['controls']:
+        if c['role'] == 'menuitem' and c['rect_px'] and (overlap(c['rect_px'], gut) or overlap(c['rect_px'], tb)):
+            found.append(f'{c["id"]} hit target overlaps the scroll cue')
+    for node, _, modal, viewport, dy in walk(svg):
+        if node.tag.replace(NS, '') != 'text' or not modal:
+            continue
+        value = ''.join(node.itertext()).strip()
+        size, wt = float(node.get('font-size')), node.get('font-weight')
+        x, y = float(node.get('x')), float(node.get('y')) - dy
+        box = [x, y - size, font(size, wt).getlength(value), size * 1.2]
+        if overlap(box, gut):
+            found.append(f'label {value!r} overlaps the scroll cue gutter')
+    # contrast: tokens and actual rendered pixels against the adjacent surface
+    for k in ('track', 'thumb'):
+        if cue[f'{k}_contrast'] < CUE_MIN_CONTRAST or contrast(cue[f'{k}_fill'], cue['surface_fill']) < CUE_MIN_CONTRAST:
+            found.append(f'{k} token contrast < 3:1')
+    surf_x = round(gut[0] + 3)
+    for k, r in (('track', tr), ('thumb', tb)):
+        ys = [r[1] + r[3] / 2] if k == 'thumb' else [y for y in (tr[1] + 4, tr[1] + tr[3] - 4)
+                                                     if not (tb[1] - 1 <= y <= tb[1] + tb[3] + 1)]
+        for y in ys:
+            px = hexpx(png.getpixel((round(r[0] + r[2] / 2), round(y))))
+            sf = hexpx(png.getpixel((surf_x, round(y))))
+            if contrast(px, sf) < CUE_MIN_CONTRAST:
+                found.append(f'rendered {k} pixel {px} vs surface {sf} < 3:1')
+    errors.extend(f'{name}: {m}' for m in found)
+    return 12
+
+
+def verify_cue_fixtures(frames, errors):
+    """Synthetic fixtures for scroll_cue() plus rendered regression witnesses (#1131)."""
+    found = []
+    vp = [0, 0, 600, 400]
+    if scroll_cue(vp, 0, 0) is not None or scroll_cue(vp, 0.3, 0) is not None:
+        found.append('fixture: cue drawn without a scroll range')
+    # exact row boundaries: rows of 200 px, viewport 400, content 800; no row is ever cut
+    for dy, above, below in ((0, False, True), (200, True, True), (400, True, False)):
+        c = scroll_cue(vp, 400, dy)
+        if not c or c['content_above'] != above or c['content_below'] != below:
+            found.append(f'fixture: exact boundary at offset {dy} gives no correct cue')
+            continue
+        t, b = c['track_px'], c['thumb_px']
+        if ((b[1] - t[1]) > 1) != above or ((t[1] + t[3] - b[1] - b[3]) > 1) != below:
+            found.append(f'fixture: thumb direction wrong at exact boundary offset {dy}')
+    # blank clipped slice: only 14.33 dp of padding overflows
+    c = scroll_cue(vp, 14.33 * DP, 0)
+    if not c or not c['content_below'] or c['content_above']:
+        found.append('fixture: blank 14.33 dp overflow gives no cue below')
+    # rendered witnesses, light and dark
+    for theme in ('light', 'dark'):
+        blank = [g for g in frames if g['theme'] == theme and g['flow'] == 'BC' and g['scroll']
+                 and g['scroll']['position'] == 'top'
+                 and any(c.get('visibility') == 'partial' for c in g['controls'])
+                 and all(not c.get('label_visible') for c in g['controls'] if c.get('visibility') == 'partial')]
+        exact = []
+        for g in frames:
+            if g['theme'] != theme or g['flow'] != 'BC' or not g['scroll']:
+                continue
+            v = g['scroll']['viewport_px']
+            bottom = v[1] + v[3]
+            rows = [c for c in g['controls'] if c['role'] == 'menuitem']
+            cut = any(c.get('visibility') == 'partial' and c['rect_px'][1] + c['rect_px'][3] > bottom - 0.6
+                      for c in rows)
+            if not cut and any(c.get('visibility') == 'offscreen' for c in rows[-1:]) and g['scroll_cue'] \
+                    and g['scroll_cue']['content_below']:
+                exact.append(g)
+        if not blank or not all(g['scroll_cue'] for g in blank):
+            found.append(f'no {theme} blank-clipped-slice witness with a cue')
+        if not exact:
+            found.append(f'no {theme} exact-row-boundary witness with a cue')
+    for g in frames:
+        if g['flow'] == 'BC' and 'existingonly' in g['file'] and g['scroll_cue']:
+            found.append(f'{g["file"]}: existing-only menu shows a cue')
+    errors.extend(f'cue: {m}' for m in found)
+    return 7
 
 
 def verify_menu_limits(g, errors):
@@ -1173,6 +1399,7 @@ def verify_cross(frames, sizes, errors):
         if g['font_scale'] != 2:
             continue
         base = g['file'].replace('-200', '').replace('-landscape', '').replace('-scrolled', '').replace('-mid', '')
+        base = base.replace('-boundary', '')
         for var in ('-noswap', '-noaiedit', *(f'-{v}' for v in MENU_VARIANTS)):
             base = base.replace(var, '')
         if base not in by:
@@ -1242,7 +1469,7 @@ def run(build_flag, render_flag, verify_flag):
         checks += c
         ratios += r
         sizes[name] = s
-    cross = verify_cross(frames, sizes, errors)
+    cross = verify_cross(frames, sizes, errors) + verify_cue_fixtures(frames, errors)
     matrix = verify_matrix(data, errors)
     try:
         commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True,
@@ -1256,6 +1483,10 @@ def run(build_flag, render_flag, verify_flag):
         'controls': sum(len(g['controls']) for g in frames), 'control_checks': checks,
         'scale_and_scroll_checks': cross, 'eligibility_checks': matrix,
         'viewer_frames': sum(1 for g in frames if g['flow'] == 'V'),
+        'scroll_cue_frames': sum(1 for g in frames if g.get('scroll_cue')),
+        'menus_without_cue': sum(1 for g in frames if g['flow'] == 'BC' and not g.get('scroll_cue')),
+        'minimum_cue_contrast': min((min(g['scroll_cue']['track_contrast'], g['scroll_cue']['thumb_contrast'])
+                                     for g in frames if g.get('scroll_cue')), default=None),
         'text_runs': len(ratios),
         'minimum_text_contrast': min(ratios) if ratios else None,
         'minimum_photo_visible': min(g['photo_visible_fraction'] for g in frames),
