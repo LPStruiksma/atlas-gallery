@@ -98,3 +98,12 @@ test('the fast-scroll recording is an APNG of real-timing frames plus a timestam
   assert.match(journey, /recordFastScroll\(compose, "l4-657-fastscroll-recording-\$mode"\)/);
   assert.match(journey, /times\.zipWithNext\(\)\.all \{ \(a, b\) -> b > a \}/);
 });
+
+test('the fast-scroll track keeps its 28 dp width; only the thumb is a 48 dp target', () => {
+  const handle = read('app/src/main/java/nl/atlas/gallery/featuregrid/TimelineScrubHandle.kt');
+  assert.match(handle, /private val TrackTouchWidth = 28\.dp\n/);
+  assert.match(handle, /private val ScrubWidth = nl\.atlas\.gallery\.featuredesign\.AtlasTokens\.Spacing\.MinimumTarget/);
+  assert.match(handle, /\.size\(ScrubWidth - TrackTouchWidth, ThumbHeight\)/);
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/LapisSlabJourneyTest.kt');
+  assert.match(journey, /tapRightColumnTileWhileScrollerShows\(\)\n/);
+});

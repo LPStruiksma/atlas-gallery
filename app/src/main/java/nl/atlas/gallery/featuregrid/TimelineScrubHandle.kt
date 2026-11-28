@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -62,7 +63,11 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 // BRAND-L4 (#657): the thumb is the 46 dp held sphere inside a 48 dp target.
-private val TrackTouchWidth = nl.atlas.gallery.featuredesign.AtlasTokens.Spacing.MinimumTarget
+// The full-height track that takes every touch stays 28 dp wide, as before,
+// so taps on the right-hand grid column still open photos; only at the
+// thumb does the touch area widen to the sphere's full 48 dp.
+private val TrackTouchWidth = 28.dp
+private val ScrubWidth = nl.atlas.gallery.featuredesign.AtlasTokens.Spacing.MinimumTarget
 private val ThumbHeight = nl.atlas.gallery.featuredesign.AtlasTokens.Spacing.MinimumTarget
 private val SphereSize = nl.atlas.gallery.featuredesign.AtlasTokens.Sphere.FastScroll
 private const val HIDE_DELAY_MS = 1_500L
@@ -141,7 +146,7 @@ internal fun TimelineFastScroller(
             enter = fadeIn(tween(200, easing = FastOutSlowInEasing)),
             exit = fadeOut(tween(300, easing = FastOutSlowInEasing)),
             modifier = Modifier.align(Alignment.TopEnd)
-                .offset { IntOffset(-(TrackTouchWidth + 8.dp).roundToPx(),
+                .offset { IntOffset(-(ScrubWidth + 8.dp).roundToPx(),
                     thumbY + ((thumbPx - 40.dp.toPx()) / 2f).roundToInt()) }
         ) {
             // §0 floating chrome: translucent dark, fully rounded pill.
@@ -156,57 +161,62 @@ internal fun TimelineFastScroller(
                     modifier = Modifier.testTag("atlas-fast-scroll-bubble"))
             }
         }
-        Box(
-            Modifier.align(Alignment.TopEnd).width(TrackTouchWidth).fillMaxHeight()
-                .then(if (visible) Modifier.pointerInput(trackPx, thumbPx) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
-                        // A new touch catches a running fling, like a real list.
-                        flingJob?.cancel()
-                        flingJob = null
-                        flinging = false
-                        dragging = true
-                        val tracker = VelocityTracker()
-                        tracker.addPosition(down.uptimeMillis, down.position)
-                        var last = fastScrollFractionForTouch(down.position.y, trackPx, thumbPx)
-                        var completed = false
-                        try {
-                            dragCurrent(last)
-                            completed = drag(down.id) { change ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                last = fastScrollFractionForTouch(change.position.y, trackPx, thumbPx)
-                                dragCurrent(last)
-                            }
-                            // drag() reports only moves: add the lift itself, so a
-                            // finger that paused before lifting reads as stopped
-                            // (no fling) instead of carrying its last motion.
-                            currentEvent.changes.firstOrNull { it.id == down.id }
-                                ?.let { tracker.addPosition(it.uptimeMillis, it.position) }
-                        } finally {
-                            dragging = false
-                            val velocityPx = if (completed) tracker.calculateVelocity().y else 0f
-                            if (travelPx > 0f && abs(velocityPx) > MIN_FLING_PX_PER_S) {
-                                // §0 fling: the platform spline decay at full
-                                // velocity carries the thumb on and settles softly;
-                                // the jump is committed only once it has stopped.
-                                flinging = true
-                                val start = last
-                                flingJob = scope.launch {
-                                    try {
-                                        val anim = Animatable(start * travelPx)
-                                        anim.updateBounds(0f, travelPx)
-                                        anim.animateDecay(velocityPx, decay) { dragCurrent(value / travelPx) }
-                                    } finally {
-                                        flinging = false
-                                        releaseCurrent()
-                                    }
-                                }
-                            } else releaseCurrent()
-                        }
+        val thumbYNow by rememberUpdatedState(thumbY)
+        // Where the thumb's extra touch area sits: frozen for the length of a
+        // drag, so the finger's positions stay in track coordinates.
+        var hitAnchorY by remember { mutableStateOf(0) }
+        suspend fun PointerInputScope.scrub(yOffset: () -> Float, onDown: () -> Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                onDown()
+                down.consume()
+                // A new touch catches a running fling, like a real list.
+                flingJob?.cancel()
+                flingJob = null
+                flinging = false
+                dragging = true
+                val tracker = VelocityTracker()
+                tracker.addPosition(down.uptimeMillis, down.position)
+                var last = fastScrollFractionForTouch(yOffset() + down.position.y, trackPx, thumbPx)
+                var completed = false
+                try {
+                    dragCurrent(last)
+                    completed = drag(down.id) { change ->
+                        change.consume()
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        last = fastScrollFractionForTouch(yOffset() + change.position.y, trackPx, thumbPx)
+                        dragCurrent(last)
                     }
-                } else Modifier)
+                    // drag() reports only moves: add the lift itself, so a
+                    // finger that paused before lifting reads as stopped
+                    // (no fling) instead of carrying its last motion.
+                    currentEvent.changes.firstOrNull { it.id == down.id }
+                        ?.let { tracker.addPosition(it.uptimeMillis, it.position) }
+                } finally {
+                    dragging = false
+                    val velocityPx = if (completed) tracker.calculateVelocity().y else 0f
+                    if (travelPx > 0f && abs(velocityPx) > MIN_FLING_PX_PER_S) {
+                        // §0 fling: the platform spline decay at full
+                        // velocity carries the thumb on and settles softly;
+                        // the jump is committed only once it has stopped.
+                        flinging = true
+                        val start = last
+                        flingJob = scope.launch {
+                            try {
+                                val anim = Animatable(start * travelPx)
+                                anim.updateBounds(0f, travelPx)
+                                anim.animateDecay(velocityPx, decay) { dragCurrent(value / travelPx) }
+                            } finally {
+                                flinging = false
+                                releaseCurrent()
+                            }
+                        }
+                    } else releaseCurrent()
+                }
+            }
+        }
+        Box(
+            Modifier.align(Alignment.TopEnd).width(ScrubWidth).fillMaxHeight()
                 .semantics {
                     stateDescription = label.orEmpty()
                     progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
@@ -216,11 +226,27 @@ internal fun TimelineFastScroller(
                 }
                 .testTag("atlas-timeline-date-scrub")
         ) {
+            // The full-height track: the old 28 dp strip at the edge.
+            Box(
+                Modifier.align(Alignment.TopEnd).width(TrackTouchWidth).fillMaxHeight()
+                    .then(if (visible) Modifier.pointerInput(trackPx, thumbPx) {
+                        scrub(yOffset = { 0f }, onDown = {})
+                    } else Modifier)
+            )
+            // The rest of the sphere's 48 dp target, only beside the thumb.
+            Box(
+                Modifier.align(Alignment.TopStart)
+                    .offset { IntOffset(0, if (held) hitAnchorY else thumbY) }
+                    .size(ScrubWidth - TrackTouchWidth, ThumbHeight)
+                    .then(if (visible) Modifier.pointerInput(trackPx, thumbPx) {
+                        scrub(yOffset = { hitAnchorY.toFloat() }, onDown = { hitAnchorY = thumbYNow })
+                    } else Modifier)
+            )
             // BRAND-L4: the held sphere at the thumb, showing the month.
             Box(
                 Modifier.align(Alignment.TopEnd)
                     .offset { IntOffset(0, thumbY) }
-                    .size(TrackTouchWidth, ThumbHeight)
+                    .size(ScrubWidth, ThumbHeight)
                     .alpha(alpha)
                     .testTag("atlas-fast-scroll-thumb"),
                 contentAlignment = Alignment.Center

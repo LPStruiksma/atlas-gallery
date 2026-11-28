@@ -148,6 +148,10 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         // one continuous drag at real timing, as an APNG plus a timestamped sheet.
         recordFastScroll(compose, "l4-657-fastscroll-recording-$mode")
 
+        // While the fast scroller shows, a tap on the right-hand column (left
+        // of the 28 dp track, away from the thumb) still opens the photo.
+        tapRightColumnTileWhileScrollerShows()
+
         // Selection of 3: each pick is a lapis sphere with a white halo.
         val tileMatcher = SemanticsMatcher("timeline tile") {
             it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-timeline-media-") == true
@@ -243,6 +247,55 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         compose.assertAboveKeyboard(hasTestTag("atlas-search-field"))
         compose.awaitScreenStill("l4-657-search-keyboard-$mode")
         saveUiEvidence("l4-657-search-keyboard-$mode.png")
+    }
+
+    /**
+     * "Gestures inside screens behave as today": the full-height scroll track
+     * stays 28 dp wide; only the thumb widens to the sphere's 48 dp. A slow
+     * drag (no fling) shows the scroller; with the clock held, it is still
+     * shown (it hides 1.5 s after scrolling stops) when the tap lands in the
+     * 20 dp band between the old track and the sphere's width, on a
+     * right-column tile clear of the thumb. The viewer must open.
+     */
+    private fun tapRightColumnTileWhileScrollerShows() {
+        val tileMatcher = SemanticsMatcher("timeline tile") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-timeline-media-") == true
+        }
+        val width = compose.activity.window.decorView.width.toFloat()
+        val (bandLeft, bandRight) = with(compose.density) {
+            width - 48.dp.toPx() to width - 28.dp.toPx()
+        }
+        val autoAdvance = compose.mainClock.autoAdvance
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+                swipeUp(startY = height * .6f, endY = height * .5f, durationMillis = 1_500L)
+            }
+            compose.mainClock.advanceTimeBy(100L)
+            val thumb = compose.onNodeWithTag("atlas-fast-scroll-thumb", useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot
+            val header = compose.onAllNodes(hasTestTag("atlas-scrolling-header"))
+                .fetchSemanticsNodes().firstOrNull()?.boundsInRoot?.bottom ?: 0f
+            val slab = compose.onNodeWithTag("atlas-nav-pill").fetchSemanticsNode().boundsInRoot.top
+            val tile = compose.onAllNodes(tileMatcher).fetchSemanticsNodes().firstOrNull {
+                val b = it.boundsInRoot
+                b.left < bandLeft && b.right > bandRight && b.top > header && b.bottom < slab &&
+                    (b.bottom < thumb.top || b.top > thumb.bottom)
+            }
+            assertTrue("a right-column tile clear of the thumb", tile != null)
+            val b = tile!!.boundsInRoot
+            compose.onNodeWithTag(tile.config[SemanticsProperties.TestTag]).performTouchInput {
+                click(Offset((bandLeft + bandRight) / 2f - b.left, b.height / 2f))
+            }
+        } finally {
+            compose.mainClock.autoAdvance = autoAdvance
+        }
+        compose.awaitThat("the right-column tap to open the viewer") {
+            compose.exists(hasTestTag("atlas-filmstrip"))
+        }
+        systemBack()
+        compose.waitForNode(hasTestTag("atlas-nav-pill"))
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
     }
 
     /**
