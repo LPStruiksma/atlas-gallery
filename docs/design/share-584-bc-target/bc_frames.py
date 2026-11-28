@@ -361,13 +361,15 @@ def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=Fa
         fr.scroll = {'container': 'menu rows (identity header pinned)', 'content_px': round(content_h, 1),
                      'viewport_px': r1(viewport), 'offset_px': round(dy, 1), 'position': scroll,
                      'reveal': 'focus or a swipe scrolls the rows; every item can be fully shown; '
-                               'a partly shown row is tappable on its visible part and focus scrolls it '
-                               'fully into view first'}
+                               'a partly shown row is a scroll cue only: a tap or focus scrolls it fully '
+                               'into view and never activates it'}
     for cid, label, origin, lines, ih in rows:
         for i, line in enumerate(lines):
             fr.text(x + ITEM_PAD_X, y + ITEM_PAD_Y + size * 0.95 + i * size * 1.3, line, size, t['ink'],
                     maxw=w - 2 * ITEM_PAD_X)
         vr, extra = _visible([x + 8, y, w - 16, ih], viewport, dy)
+        extra['activation'] = 'activate' if extra.get('visibility') == 'full' else (
+            'reveal-only' if extra.get('visibility') == 'partial' else 'none')
         fr.control(cid, 'menuitem', label, vr, lines=len(lines), **extra)
         y += ih
     if overflow > 0:
@@ -548,6 +550,8 @@ def annotate(g, png_bytes):
         colour = (230, 0, 120) if c.get('visibility') == 'partial' else (0, 190, 80)
         d.rectangle([x, y, x + w, y + h], outline=colour, width=5)
         tag = f'{n} {c["id"]} {w / DENSITY:.0f}x{h / DENSITY:.0f}dp'
+        if c.get('activation') == 'reveal-only':
+            tag += ' reveal-only'
         tw = d.textlength(tag, font=lab)
         d.rectangle([x + 4, y + 4, x + 16 + tw, y + 52], fill=(0, 0, 0))
         d.text((x + 10, y + 6), tag, font=lab, fill=colour)
@@ -657,7 +661,11 @@ def verify_frame(g, svg, png, bg, palette, errors):
             errors.append(f'{name}/{c["id"]}: outside its surface')
         if g['scroll'] and not inside(r, g['scroll']['viewport_px']) and c['id'] != 'ok' and not c.get('pinned'):
             errors.append(f'{name}/{c["id"]}: visible rect outside the scroll viewport')
-        if c['role'] in TAPPABLE and vis == 'full':
+        if c['role'] in TAPPABLE and c.get('activation', 'activate') == 'activate' and vis != 'full':
+            errors.append(f'{name}/{c["id"]}: a {vis} row must not activate its action')
+        if c['role'] in TAPPABLE and vis == 'partial' and c.get('activation') != 'reveal-only':
+            errors.append(f'{name}/{c["id"]}: partly shown row lacks reveal-only activation')
+        if c['role'] in TAPPABLE and c.get('activation', 'activate') == 'activate':
             checks += 2
             if min(r[2], r[3]) < MIN_HIT - 0.01:
                 errors.append(f'{name}/{c["id"]}: {r[2]:.0f}x{r[3]:.0f}px < 48 dp')
