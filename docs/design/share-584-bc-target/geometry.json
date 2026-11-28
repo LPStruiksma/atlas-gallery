@@ -2357,6 +2357,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -2538,6 +2539,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -2639,11 +2641,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.623,
+   "photo_visible_fraction": 0.658,
    "modal_px": [
     305,
     250,
@@ -2719,7 +2721,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -2819,11 +2823,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.623,
+   "photo_visible_fraction": 0.658,
    "modal_px": [
     305,
     250,
@@ -2899,7 +2903,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -3093,6 +3099,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -3194,11 +3201,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -3307,7 +3314,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -3501,6 +3510,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -3602,11 +3612,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -3715,7 +3725,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -3894,6 +3906,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -4053,6 +4066,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -4221,6 +4235,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -4316,11 +4331,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.412,
+   "photo_visible_fraction": 0.451,
    "modal_px": [
     305,
     203.0,
@@ -4413,7 +4428,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -4586,6 +4603,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -4681,11 +4699,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.412,
+   "photo_visible_fraction": 0.451,
    "modal_px": [
     305,
     203.0,
@@ -4778,7 +4796,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -4936,6 +4956,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -5025,11 +5046,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.429,
+   "photo_visible_fraction": 0.473,
    "modal_px": [
     305,
     222.8,
@@ -5089,7 +5110,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -5241,6 +5264,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -5330,11 +5354,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.429,
+   "photo_visible_fraction": 0.473,
    "modal_px": [
     305,
     222.8,
@@ -5394,7 +5418,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -5983,9 +6009,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": null,
@@ -6020,9 +6046,9 @@
      "label": "Synthetic lake video",
      "rect_px": [
       330,
-      90,
+      80,
       900,
-      800
+      620
      ]
     },
     {
@@ -6030,10 +6056,21 @@
      "role": "button",
      "label": "Play video",
      "rect_px": [
-      690,
-      400,
+      690.0,
+      300.0,
       180,
       180
+     ]
+    },
+    {
+     "id": "filmstrip-current",
+     "role": "button",
+     "label": "Current photo in filmstrip",
+     "rect_px": [
+      710,
+      728,
+      140,
+      154
      ]
     },
     {
@@ -6075,6 +6112,7 @@
     "details",
     "photo",
     "play",
+    "filmstrip-current",
     "slab-favourite",
     "slab-share",
     "slab-delete"
@@ -6169,6 +6207,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6264,6 +6303,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6314,9 +6354,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -6359,7 +6399,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -6453,6 +6495,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6548,6 +6591,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6598,9 +6642,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -6643,7 +6687,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -6737,6 +6783,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6832,6 +6879,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -6882,9 +6930,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -6939,7 +6987,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -7033,6 +7083,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7128,6 +7179,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7178,9 +7230,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -7235,7 +7287,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -7329,6 +7383,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7424,6 +7479,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7474,9 +7530,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -7531,7 +7587,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -7625,6 +7683,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7720,6 +7779,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7770,9 +7830,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -7827,7 +7887,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -7921,6 +7983,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -7971,9 +8034,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -8016,7 +8079,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -8110,6 +8175,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -8160,9 +8226,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -8217,7 +8283,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -8311,6 +8379,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -8361,9 +8430,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -8406,7 +8475,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -8500,6 +8571,7 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
     "filmstrip-current",
     "slab-favourite",
@@ -8550,9 +8622,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -8607,7 +8679,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -8656,11 +8730,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -8770,7 +8844,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -8870,11 +8946,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -8988,7 +9064,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -9088,11 +9166,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -9202,7 +9280,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -9302,11 +9382,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.272,
+   "photo_visible_fraction": 0.321,
    "modal_px": [
     305,
     203.0,
@@ -9420,7 +9500,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -9520,11 +9602,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.412,
+   "photo_visible_fraction": 0.451,
    "modal_px": [
     305,
     203.0,
@@ -9617,7 +9699,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -9711,11 +9795,11 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
-   "photo_visible_fraction": 0.412,
+   "photo_visible_fraction": 0.451,
    "modal_px": [
     305,
     203.0,
@@ -9808,7 +9892,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -9902,9 +9988,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -9959,7 +10045,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -10008,9 +10096,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -10065,7 +10153,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -10114,9 +10204,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -10171,7 +10261,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -10220,9 +10312,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -10277,7 +10369,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -10326,9 +10420,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -10383,7 +10477,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",
@@ -10432,9 +10528,9 @@
    },
    "photo_px": [
     330,
-    90,
+    80,
     900,
-    800
+    620
    ],
    "photo_visible_fraction": 1.0,
    "modal_px": [
@@ -10489,7 +10585,9 @@
    "inert_background_controls": [
     "back",
     "more",
+    "details",
     "photo",
+    "filmstrip-current",
     "slab-favourite",
     "slab-edit",
     "slab-share",

@@ -299,13 +299,13 @@ class Frame:
             '<rect x="270" y="429" width="45" height="390" fill="#FFFFFF"/>'
             '<path d="M738 884 L738 689 L828 884 Z" fill="#FFFFFF"/></svg>')
 
-    def header(self, back, second, inert, back_label='Back', second_id='more'):
-        """Back plus one trailing control: ``more`` (library still with a menu item) or
-        ``details`` (restricted or video viewer, as host-wired on live main), or none."""
+    def header(self, back, trailing, inert, back_label='Back'):
+        """Back plus the trailing controls in live-main order (GalleryViewer.kt L950-980):
+        ``more`` (when a menu item applies), then ``details`` (when the access mode has
+        Details). They are independent: a library still shows both."""
         pairs = [('back', back, back_label)]
-        if second_id:
-            pairs.append((second_id, second, 'More photo actions' if second_id == 'more'
-                          else 'Photo or video details'))
+        for cid, rect in trailing:
+            pairs.append((cid, rect, 'More photo actions' if cid == 'more' else 'Photo or video details'))
         for cid, rect, label in pairs:
             x, y, w, h = rect
             self.rect(x, y, w, h, VIEWER['pill'], rx=50)
@@ -359,7 +359,7 @@ class Frame:
         unit and are not drawn in any frame (specified, unchanged)."""
         a = ACCESS[access]
         lib = access == 'LIBRARY'
-        second = 'more' if (more and media == 'still') else ('details' if a['details'] else None)
+        trailing_ids = (['more'] if (more and media == 'still') else []) + (['details'] if a['details'] else [])
         if filmstrip is None:
             filmstrip = lib
         slab = None
@@ -368,7 +368,9 @@ class Frame:
         self.rect(0, 0, self.w, self.h, VIEWER['ground'])
         if self.orientation == 'portrait':
             self.art(90, 280, 900, 1300)
-            self.header([24, 137, 144, 138], [890, 137, 166, 138], inert, a['back'], second)
+            slots = [[890, 137, 166, 138], [714, 137, 166, 138]]   # right to left
+            trailing = list(zip(trailing_ids, reversed(slots[:len(trailing_ids)])))
+            self.header([24, 137, 144, 138], trailing, inert, a['back'])
             self.control('photo', 'image', ITEM['label'] if media == 'still' else 'Synthetic lake video',
                          self.photo_px, inert=inert)
             if media == 'video':
@@ -378,12 +380,17 @@ class Frame:
             if slab:
                 self.slab(215, 2042, inert, slab)
         else:
-            self.art(330, 90, 900, 800)
-            self.header([145, 90, 144, 138], [145, 250, 144, 138], inert, a['back'], second)
+            # with a filmstrip the photo yields height to it (strip above the slab, as on main)
+            self.art(330, 80, 900, 620) if filmstrip else self.art(330, 90, 900, 800)
+            slots = [[145, 250, 144, 138], [145, 410, 144, 138]]   # top to bottom
+            self.header([145, 90, 144, 138], list(zip(trailing_ids, slots)), inert, a['back'])
             self.control('photo', 'image', ITEM['label'] if media == 'still' else 'Synthetic lake video',
                          self.photo_px, inert=inert)
             if media == 'video':
-                self.play(780, 490, inert)
+                px, py, pw, ph = self.photo_px
+                self.play(px + pw / 2, py + ph / 2, inert)
+            if filmstrip:
+                self.filmstrip(780, 735, inert)
             if slab:
                 self.slab(455, 915, inert, slab)
 
@@ -876,6 +883,16 @@ def verify_frame(g, svg, png, bg, palette, errors):
         return checks, ratios, sizes
     if not g['inert_background_controls'] or set(g['inert_background_controls']) & set(ids):
         errors.append(f'{name}: viewer behind the surface is not isolated from focus')
+    # the library still behind every menu/dialog keeps its existing chrome: More AND Details,
+    # filmstrip (both orientations) and slab
+    missing = {'back', 'more', 'details', 'filmstrip-current', 'slab-edit'} - set(g['inert_background_controls'])
+    if missing:
+        errors.append(f'{name}: library viewer behind the surface lacks {sorted(missing)}')
+    # margins and containment are measured on the drawn SVG surface, not only on metadata
+    surf = next((n for n, _, m, _, _ in walk(svg) if m and n.tag.replace(NS, '') == 'rect'), None)
+    if surf is None or any(abs(float(surf.get(k)) - v) > 0.11 for k, v in
+                           zip(('x', 'y', 'width', 'height'), g['modal_px'])):
+        errors.append(f'{name}: drawn surface rect differs from modal_px')
     if not inside(g['modal_px'], safe) and g['flow'] != 'BC':
         errors.append(f'{name}: dialog leaves the safe area')
     visible_tap = []
@@ -1002,6 +1019,8 @@ def verify_viewer(g, controls, ids, safe, errors):
         slab = [i for i in ids if i.startswith('slab-')]
         if e['access'] != 'LIBRARY' and (slab or 'filmstrip-current' in ids):
             found.append(f'{e["access"]} shows library chrome {slab or ["filmstrip"]}')
+        if e['access'] == 'LIBRARY' and ('filmstrip-current' not in ids or not slab):
+            found.append('LIBRARY viewer lost its filmstrip or slab (existing navigation)')
         if e['media'] == 'video' and 'slab-edit' in ids:
             found.append('video shows Edit (PhotoEditorHandoff is still-only)')
     tap = [c for c in controls if c['role'] in TAPPABLE]
@@ -1043,13 +1062,61 @@ def verify_error_copy(g, controls, errors):
     return 4
 
 
+# Hand-written witnesses: literal expectations, independent of menu_items().
+ELIG_WITNESSES = [
+    (elig(), ['ai-edit', 'swap-person', 'set-wallpaper', 'copy-image']),
+    (elig(wallpaper=False), ['ai-edit', 'swap-person', 'copy-image']),
+    (elig(copy=False), ['ai-edit', 'swap-person', 'set-wallpaper']),
+    (elig(swap=False, wallpaper=False), ['ai-edit', 'copy-image']),
+    (elig(ai_edit=False), ['set-wallpaper', 'copy-image']),
+    (elig(ai_edit=False, copy=False), ['set-wallpaper']),
+    (elig(ai_edit=False, wallpaper=False), ['copy-image']),
+    (elig(ai_edit=False, swap=True, wallpaper=False, copy=False), []),
+    (elig(wallpaper=False, copy=False), ['ai-edit', 'swap-person']),
+    (elig(readable=False), ['ai-edit', 'swap-person']),
+    (elig(readable=False, ai_edit=False), []),
+    (elig(media='video'), []),
+    (elig(access='EXTERNAL'), []),
+    (elig(access='EXTERNAL', ai_edit=False, swap=False), []),
+    (elig(access='SECURE'), []),
+    (elig(access='SECURE', media='video'), []),
+]
+
+
+def expected_items(e):
+    """Independent per-action oracle: each item decided on its own predicate only."""
+    base = e['access'] == 'LIBRARY' and e['media'] == 'still'
+    want = {
+        'ai-edit': base and e['ai_edit'],
+        'swap-person': base and e['ai_edit'] and e['swap'],
+        'set-wallpaper': base and e['readable'] and e['wallpaper'],
+        'copy-image': base and e['readable'] and e['copy'],
+    }
+    return [m[0] for m in MENU_ITEMS if want[m[0]]]
+
+
 def verify_matrix(data, errors):
-    """#1128 finding 1: access x media x per-action eligibility, both ways."""
+    """#1128 finding 1: access x media x per-action eligibility, every row exactly."""
     stored = data.get('eligibility_matrix') or []
     fresh = eligibility_matrix()
     found = []
     if stored != fresh:
         found.append('geometry eligibility_matrix is stale; rebuild')
+    if len(fresh) != 192 or len({tuple(r[k] for k in ELIG_KEYS) for r in fresh}) != 192:
+        found.append('eligibility matrix does not cover all 192 combinations exactly once')
+    for e, want in ELIG_WITNESSES:
+        if menu_items(e) != want:
+            found.append(f'witness {e}: got {menu_items(e)}, want {want}')
+    for row in fresh:
+        e = {k: row[k] for k in ELIG_KEYS}
+        if row['items'] != expected_items(e) or row['more'] != bool(expected_items(e)):
+            found.append(f'{e}: items {row["items"]} != per-action expectation {expected_items(e)}')
+        if not row['wallpaper'] and 'set-wallpaper' in row['items']:
+            found.append(f'{e}: Set as wallpaper offered with wallpaper=False')
+        if not row['copy'] and 'copy-image' in row['items']:
+            found.append(f'{e}: Copy image offered with copy=False')
+        if not row['ai_edit'] and ({'ai-edit', 'swap-person'} & set(row['items'])):
+            found.append(f'{e}: AI Edit or Swap offered with ai_edit=False')
     for row in fresh:
         items, tag = row['items'], {k: row[k] for k in ELIG_KEYS}
         if row['access'] != 'LIBRARY' and items:
@@ -1096,7 +1163,7 @@ def verify_matrix(data, errors):
                                and g['font_scale'] == sc for g in frames):
                         found.append(f'no rendered {stage} {theme} {orient} {sc}x frame')
     errors.extend(f'matrix: {m}' for m in found)
-    return len(fresh) + 20
+    return 4 * len(fresh) + len(ELIG_WITNESSES) + 20
 
 
 def verify_cross(frames, sizes, errors):
