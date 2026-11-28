@@ -655,8 +655,9 @@ def build():
     for theme in ('light', 'dark'):
         for state in A_STATES:
             plan.append((state, theme, 2, 'landscape'))
-    for state, theme in (('ready', 'light'), ('ready', 'dark'), ('failed', 'light'), ('failed', 'dark')):
-        plan.append((state, theme, 1, 'landscape'))
+    for theme in ('light', 'dark'):
+        for state in A_STATES:
+            plan.append((state, theme, 1, 'landscape'))
     for state, theme, scale, orientation in plan:
         fr = frame_share(state, theme, scale, orientation)
         frames.append(fr)

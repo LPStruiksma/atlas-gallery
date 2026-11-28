@@ -274,8 +274,8 @@ def check_identity(g, svg, png, visible_text, errors):
     for text in (th['name'],):
         if text not in visible_text:
             errors.append(f'{name}: item name {text!r} is not visible')
-    if not any(th['date'].startswith(v) or v in th['date'] for v in visible_text if len(v) > 3):
-        errors.append(f'{name}: item date is not visible')
+    if not joined_run(visible_text, th['date']):
+        errors.append(f'{name}: complete item date and time {th["date"]!r} is not visible in reading order')
     ident = next((c for c in g['controls'] if c['id'] == 'item-identity'), None)
     if not ident or ident.get('region') != 'pinned' or th['name'] not in ident['label']:
         errors.append(f'{name}: item identity is not a pinned, labelled control')
@@ -322,9 +322,58 @@ def check_share_state(g, errors):
             errors.append(f'{name}: actions {sorted(actions)} != {sorted(need)}')
     if st == 'preparing' and ids.get('share', {}).get('enabled') is not False:
         errors.append(f'{name}: Share must be disabled while preparing')
+    if st == 'preparing' and s.get('dispatch') != 'disabled':
+        errors.append(f'{name}: dispatch must be disabled while preparing (got {s.get("dispatch")!r})')
     if st in ('ready', 'nogps') and s['dispatch'] != 'verified temporary derivative':
         errors.append(f'{name}: On must dispatch only the verified derivative')
     return 1
+
+
+def joined_run(lines, want):
+    """True when consecutive visible lines, joined by spaces, equal ``want`` exactly."""
+    for i in range(len(lines)):
+        acc = ''
+        for line in lines[i:]:
+            acc = line if not acc else acc + ' ' + line
+            if acc == want:
+                return True
+            if not want.startswith(acc):
+                break
+    return False
+
+
+STATES = ('off', 'preparing', 'ready', 'nogps', 'failed', 'unknown', 'unsupported')
+
+
+def expected_base(state, theme, scale, orientation):
+    parts = [f'A-{state}-{theme}']
+    if scale == 2:
+        parts.append('200')
+    if orientation == 'landscape':
+        parts.append('landscape')
+    return '-'.join(parts)
+
+
+def check_coverage(frames, errors):
+    """Every state x theme x text scale x orientation has its base frame, plus the entry."""
+    by = {g['file']: g for g in frames}
+    n = 0
+    if 'A-viewer' not in by:
+        errors.append('coverage: A-viewer entry frame missing')
+    for state in STATES:
+        for theme in ('light', 'dark'):
+            for scale in (1, 2):
+                for orientation in ('portrait', 'landscape'):
+                    n += 1
+                    name = expected_base(state, theme, scale, orientation)
+                    g = by.get(name)
+                    if not g:
+                        errors.append(f'coverage: {name} missing')
+                        continue
+                    if (g['stage'], g['theme'], g['font_scale'], g['orientation']) != \
+                            (state, theme, scale, orientation) or g.get('scroll_position') not in (None, 'top'):
+                        errors.append(f'coverage: {name} does not declare {state}/{theme}/{scale}/{orientation}')
+    return n
 
 
 def check_scroll(frames, errors):
@@ -390,7 +439,8 @@ def contact_sheets(frames):
     font = ImageFont.truetype(FONT_FILES['normal'], 14)
     out = {}
     for orient, (cols, tw) in CONTACT.items():
-        group = [g for g in frames if g['orientation'] == orient]
+      for scale in (1, 2):
+        group = [g for g in frames if g['orientation'] == orient and g['font_scale'] == scale]
         if not group:
             continue
         W, H = group[0]['px']
@@ -406,7 +456,7 @@ def contact_sheets(frames):
             sheet.paste(tile, (cx, cy))
             draw.rectangle([cx - 1, cy - 1, cx + tw, cy + th], outline=(90, 95, 122))
             draw.text((cx, cy + th + 8), g['file'], fill=(14, 16, 48), font=font)
-        out[f'contact-{orient}'] = sheet
+        out[f'contact-{orient}-{100 * scale}'] = sheet
     return out
 
 
@@ -468,6 +518,7 @@ def run(render, verify):
         n_ident += check_identity(g, svg, fresh, visible, errors)
         n_act += check_actions(g, errors)
         n_state += check_share_state(g, errors)
+    n_cov = check_coverage(frames, errors)
     n_scroll = check_scroll(frames, errors)
     n_scale = check_scale(frames, svgs, errors)
     for stem, im in contact_sheets(frames).items():
@@ -487,18 +538,85 @@ def run(render, verify):
         'scrolled_frames': sum(1 for g in frames if g.get('scroll_position') in ('mid', 'end')),
         'controls': sum(len(g['controls']) for g in frames),
         'control_checks': n_ctrl, 'identity_checks': n_ident, 'action_checks': n_act,
-        'share_state_checks': n_state, 'scroll_groups': n_scroll, 'scale_200_checks': n_scale,
+        'share_state_checks': n_state, 'coverage_cells': n_cov, 'scroll_groups': n_scroll, 'scale_200_checks': n_scale,
         'text_contrast_runs': len(ratios), 'clipped_text_runs': counts['clipped'],
         'minimum_text_contrast': min(ratios) if ratios else None, 'errors': errors,
     }, indent=1))
     return 1 if errors else 0
 
 
+def self_test():
+    """Mutate a copy of geometry.json and prove each guarded invariant rejects it."""
+    data = json.loads((ROOT / 'geometry.json').read_text())
+
+    def frame(frames, name):
+        return next(g for g in frames if g['file'] == name)
+
+    def state_errors(frames):
+        errs = []
+        for g in frames:
+            check_share_state(g, errs)
+        return errs
+
+    def mutate(label, fn, check):
+        frames = copy.deepcopy(data['frames'])
+        fn(frames)
+        errs = []
+        check(frames, errs)
+        return label, bool(errs), errs[:1]
+
+    cases = [
+        mutate('preparing dispatches a derivative',
+               lambda fr: frame(fr, 'A-preparing-light')['status'].update(dispatch='verified temporary derivative'),
+               lambda fr, e: e.extend(state_errors(fr))),
+        mutate('preparing dispatches the original',
+               lambda fr: frame(fr, 'A-preparing-dark-200-landscape')['status'].update(dispatch='original URI'),
+               lambda fr, e: e.extend(state_errors(fr))),
+        mutate('preparing offers an enabled Share',
+               lambda fr: next(c for c in frame(fr, 'A-preparing-dark')['controls']
+                               if c['id'] == 'share').update(enabled=True),
+               lambda fr, e: e.extend(state_errors(fr))),
+        mutate('failed offers Share',
+               lambda fr: frame(fr, 'A-failed-light-200')['controls'].append(
+                   {'id': 'share', 'role': 'button', 'label': 'Share', 'rect_px': [0, 0, 1, 1]}),
+               lambda fr, e: e.extend(state_errors(fr))),
+        mutate('non-Off state exposes the original URI',
+               lambda fr: frame(fr, 'A-nogps-light')['status'].update(original_uri_exposed=True),
+               lambda fr, e: e.extend(state_errors(fr))),
+        mutate('landscape 100 % no-GPS frame removed',
+               lambda fr: fr.remove(frame(fr, 'A-nogps-dark-landscape')),
+               check_coverage),
+        mutate('scrolled sibling removed',
+               lambda fr: fr.remove(frame(fr, 'A-failed-light-200-scrolled')),
+               check_scroll),
+    ]
+    date_cases = [
+        ('date split in reading order', ['14 Jul 2024,', '14:05'], True),
+        ('time missing', ['14 Jul 2024,'], False),
+        ('partial date only', ['Jul 2024,', '14:05'], False),
+    ]
+    ok = True
+    report = []
+    for label, rejected, sample in cases:
+        report.append({'mutation': label, 'rejected': rejected, 'error': sample[0] if sample else None})
+        ok &= rejected
+    for label, lines, want in date_cases:
+        got = joined_run(lines, '14 Jul 2024, 14:05')
+        report.append({'date_case': label, 'accepted': got, 'expected': want})
+        ok &= got == want
+    print(json.dumps({'self_test': 'pass' if ok else 'FAIL', 'cases': report}, indent=1))
+    return 0 if ok else 1
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('--render', action='store_true', help='write PNGs and contact sheets from the SVG sources')
     p.add_argument('--verify', action='store_true', help='check SVG, PNG and geometry')
+    p.add_argument('--self-test', action='store_true',
+                   help='prove the share-state, coverage, scroll and date checks reject mutated geometry')
     a = p.parse_args()
+    if a.self_test:
+        sys.exit(self_test())
     if not (a.render or a.verify):
         p.print_help()
         sys.exit(2)

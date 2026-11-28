@@ -44,7 +44,7 @@ Unreadable or redacted location is `unknown`, never `nogps`. Retry → `preparin
 
 ## Frames
 
-73 frames: 41 portrait 1080×2340, 32 landscape 2340×1080, at 2.8125 px/dp with synthetic insets L/T/R/B portrait 0/125/0/135 px and landscape 125/68/135/0 px (from the #142 target, not measured on an S24+).
+83 frames: 41 portrait 1080×2340, 42 landscape 2340×1080, at 2.8125 px/dp with synthetic insets L/T/R/B portrait 0/125/0/135 px and landscape 125/68/135/0 px (from the #142 target, not measured on an S24+).
 
 | Set | Frames |
 | --- | --- |
@@ -52,8 +52,8 @@ Unreadable or redacted location is `unknown`, never `nogps`. Retry → `preparin
 | Portrait 100 % | all 7 states × light, dark (14) |
 | Portrait 200 % | all 7 states × light, dark (14), plus `-scrolled` for the 12 that overflow (Off fits) |
 | Landscape 200 % | all 7 states × light, dark (14), plus `-scrolled` for all 14 |
-| Landscape 100 % | ready and failed × light, dark (4) |
-| Overviews | `png/contact-portrait.png`, `png/contact-landscape.png` (downscaled, labelled; for navigation only, review the full-size PNGs) |
+| Landscape 100 % | all 7 states × light, dark (14; none overflows) |
+| Overviews | `png/contact-portrait-100.png`, `png/contact-portrait-200.png`, `png/contact-landscape-100.png`, `png/contact-landscape-200.png` (downscaled, labelled; for navigation only, review the full-size PNGs) |
 
 Direct links for the frames the preflight named (pinned URLs to the reviewed head are in the PR): [`A-ready-light-200`](png/A-ready-light-200.png), [`A-ready-light-200-scrolled`](png/A-ready-light-200-scrolled.png), [`A-nogps-light-200`](png/A-nogps-light-200.png), [`A-failed-light-200`](png/A-failed-light-200.png), [`A-failed-dark-200`](png/A-failed-dark-200.png), [`A-failed-light-200-landscape`](png/A-failed-light-200-landscape.png).
 
@@ -64,19 +64,24 @@ Direct links for the frames the preflight named (pinned URLs to the reviewed hea
 ```bash
 python3 docs/design/share-584-a-target/build_frames.py                       # SVG + geometry.json
 python3 docs/design/share-584-a-target/render_and_verify.py --render --verify # PNG + contact sheets + checks
+python3 docs/design/share-584-a-target/render_and_verify.py --self-test       # guards reject mutated geometry
 ```
 
 Needs Python 3, CairoSVG, Pillow and DejaVu Sans. `--verify` re-renders every SVG and compares it with the committed PNG (and rebuilds the contact sheets), then checks:
 
-* **Identity:** in every share-state frame the thumbnail is pinned outside the scroll region, inside the modal and the safe area, ≥ 64 dp on its short side, drawn with `meet` at the photo's own aspect ratio, and six landmark pixels (both corners, sun, lighthouse, sail, hull) render in their exact colours, so the whole photo is visible; the item name and date are visible text.
+* **Identity:** in every share-state frame the thumbnail is pinned outside the scroll region, inside the modal and the safe area, ≥ 64 dp on its short side, drawn with `meet` at the photo's own aspect ratio, and six landmark pixels (both corners, sun, lighthouse, sail, hull) render in their exact colours, so the whole photo is visible; the item name is visible text and the complete date and time appear as consecutive visible lines in reading order.
 * **Actions:** Cancel and Share/Retry are pinned, fully visible and outside the scroll region in every frame, including scrolled ones.
 * **Scrolling:** an overflowing frame has a scrolled-to-end sibling, the offsets cover the whole content, each has an indicator, and the focus ring encloses a fully visible control.
 * **Accessibility geometry:** tappable controls ≥ 135 px (48 dp), inside frame, safe insets and modal, no overlaps; focus order equals the active controls; the viewer is inert; an alert is first and fully visible in the initial frame; switch tracks ≥ 3:1 against their row; every visible text run ≥ 4.5:1 against its rendered background.
 * **Palette:** every UI colour outside the photo art is a Quiet Frame v3 token.
-* **Privacy state:** Share disabled while preparing; no Share after failure; On stays remembered in every non-Off state; the original URI is offered only in Off; failure dispatch is blocked.
+* **Privacy state:** Share disabled **and dispatch recorded as `disabled`** while preparing; no Share after failure; On stays remembered in every non-Off state; the original URI is offered only in Off; failure dispatch is blocked.
 * **Scale:** 200 % sheet type sizes are exactly 2× the 100 % ones.
 
-Current result at the PR head is recorded in the PR: **73 frames, 0 errors**, minimum text contrast 5.65:1.
+* **Coverage:** every state × theme × text scale × orientation (7 × 2 × 2 × 2 = 56 cells) has its base frame, plus the viewer entry; a missing combination fails.
+
+`--self-test` mutates a copy of `geometry.json` and shows each guard rejects it: preparing that dispatches a derivative or the original, an enabled Share while preparing, Share after failure, the original URI exposed when On, a missing landscape 100 % frame, a missing scrolled sibling; and that the date check accepts only the complete `14 Jul 2024, 14:05` across consecutive visible lines.
+
+Current result at the PR head is recorded in the PR: **83 frames, 0 errors**, minimum text contrast 5.65:1; self-test pass.
 
 ## Matrix: rendered, specified, runtime-untested
 
@@ -84,7 +89,7 @@ Current result at the PR head is recorded in the PR: **73 frames, 0 errors**, mi
 | --- | --- |
 | All 7 states, light and dark, portrait 100 % and 200 % | **Rendered** |
 | All 7 states, light and dark, landscape 200 %, initial and scrolled | **Rendered** |
-| Landscape 100 % (ready, failed; both themes) | **Rendered**; other states specified by the same layout |
+| All 7 states, light and dark, landscape 100 % | **Rendered** |
 | Item identity (fitted thumbnail, name, date) in every Atlas-owned state | **Rendered and verified** |
 | Share/Cancel or Retry/Cancel reachable without shrinking text | **Rendered and verified** |
 | Scrolled states with anchored context, focus, dismissal | **Rendered** (scroll end); middle state generated only when needed (none at current sizes) |

@@ -16048,6 +16048,449 @@
    }
   },
   {
+   "file": "A-off-light-landscape",
+   "flow": "A",
+   "stage": "off",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     590.0,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     598.0,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    458.8,
+    2040,
+    601.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      590.0,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      598.0,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, Off",
+     "rect_px": [
+      979,
+      530.8,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "indicator_px": [
+      1949,
+      545.2,
+      140,
+      74
+     ],
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      530.8,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "helper-text",
+     "role": "text",
+     "label": "Off: the original file is shared, including any location stored in it.",
+     "rect_px": [
+      975,
+      698.8,
+      1148,
+      128.4
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      698.8,
+      1148,
+      128.4
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "remove-location",
+    "helper-text",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "Off",
+    "dispatch": "original URI (user chose Off)",
+    "preference_changed_silently": false,
+    "preference": "Off on first use only; user-changed in this sheet",
+    "original_uri_exposed": true
+   }
+  },
+  {
+   "file": "A-preparing-light-landscape",
+   "flow": "A",
+   "stage": "preparing",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "status-message",
+     "role": "status",
+     "label": "Preparing a copy without location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "polite",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": false,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "disabled",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
    "file": "A-ready-light-landscape",
    "flow": "A",
    "stage": "ready",
@@ -16273,10 +16716,10 @@
    }
   },
   {
-   "file": "A-ready-dark-landscape",
+   "file": "A-nogps-light-landscape",
    "flow": "A",
-   "stage": "ready",
-   "theme": "dark",
+   "stage": "nogps",
+   "theme": "light",
    "orientation": "landscape",
    "font_scale": 1,
    "scroll_position": null,
@@ -16399,7 +16842,7 @@
     {
      "id": "status-message",
      "role": "status",
-     "label": "Copy without location is ready",
+     "label": "No location found",
      "rect_px": [
       975,
       456.8,
@@ -16722,6 +17165,1333 @@
    }
   },
   {
+   "file": "A-unknown-light-landscape",
+   "flow": "A",
+   "stage": "unknown",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't check the location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "assertive",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "item-identity",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focused": "status-message",
+   "focus_ring_px": [
+    969,
+    450.8,
+    1160,
+    203.2
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-unsupported-light-landscape",
+   "flow": "A",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Can't make a copy without location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "assertive",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      1140.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "item-identity",
+    "remove-location-state",
+    "cancel"
+   ],
+   "focused": "status-message",
+   "focus_ring_px": [
+    969,
+    450.8,
+    1160,
+    203.2
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-off-dark-landscape",
+   "flow": "A",
+   "stage": "off",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     590.0,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     598.0,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    458.8,
+    2040,
+    601.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      590.0,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      598.0,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, Off",
+     "rect_px": [
+      979,
+      530.8,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "indicator_px": [
+      1949,
+      545.2,
+      140,
+      74
+     ],
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      530.8,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "helper-text",
+     "role": "text",
+     "label": "Off: the original file is shared, including any location stored in it.",
+     "rect_px": [
+      975,
+      698.8,
+      1148,
+      128.4
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      698.8,
+      1148,
+      128.4
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "remove-location",
+    "helper-text",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "Off",
+    "dispatch": "original URI (user chose Off)",
+    "preference_changed_silently": false,
+    "preference": "Off on first use only; user-changed in this sheet",
+    "original_uri_exposed": true
+   }
+  },
+  {
+   "file": "A-preparing-dark-landscape",
+   "flow": "A",
+   "stage": "preparing",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "status-message",
+     "role": "status",
+     "label": "Preparing a copy without location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "polite",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": false,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "disabled",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-ready-dark-landscape",
+   "flow": "A",
+   "stage": "ready",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "status-message",
+     "role": "status",
+     "label": "Copy without location is ready",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "polite",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "indicator_px": [
+      1949,
+      678.4,
+      140,
+      74
+     ],
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "status-message",
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-nogps-dark-landscape",
+   "flow": "A",
+   "stage": "nogps",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "status-message",
+     "role": "status",
+     "label": "No location found",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "polite",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "indicator_px": [
+      1949,
+      678.4,
+      140,
+      74
+     ],
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "item-identity",
+    "status-message",
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focused": null,
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
    "file": "A-failed-dark-landscape",
    "flow": "A",
    "stage": "failed",
@@ -16936,6 +18706,440 @@
     502.0,
     1160,
     152.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-unknown-dark-landscape",
+   "flow": "A",
+   "stage": "unknown",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't check the location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "assertive",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      1561.0,
+      870.0,
+      558.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned"
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "item-identity",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focused": "status-message",
+   "focus_ring_px": [
+    969,
+    450.8,
+    1160,
+    203.2
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false,
+    "preference": "On, remembered from the user's last choice",
+    "original_uri_exposed": false
+   }
+  },
+  {
+   "file": "A-unsupported-dark-landscape",
+   "flow": "A",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "scroll_position": null,
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "thumbnail": {
+    "box_px": [
+     211,
+     530.1,
+     300,
+     300
+    ],
+    "image_px": [
+     262.7,
+     538.1,
+     196.6,
+     284.0
+    ],
+    "fit": "meet",
+    "art_px": [
+     900,
+     1300
+    ],
+    "landmarks": [
+     {
+      "name": "sky top-left",
+      "xy": [
+       60,
+       60
+      ],
+      "rgb": "#DDEEFF"
+     },
+     {
+      "name": "sun",
+      "xy": [
+       666,
+       299
+      ],
+      "rgb": "#FFF1AA"
+     },
+     {
+      "name": "lighthouse tower",
+      "xy": [
+       292,
+       700
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "sail",
+      "xy": [
+       762,
+       846
+      ],
+      "rgb": "#FFFFFF"
+     },
+     {
+      "name": "hull",
+      "xy": [
+       770,
+       930
+      ],
+      "rgb": "#3448E0"
+     },
+     {
+      "name": "shore bottom-left",
+      "xy": [
+       60,
+       1260
+      ],
+      "rgb": "#244F61"
+     }
+    ],
+    "name": "Lake photo",
+    "date": "14 Jul 2024, 14:05"
+   },
+   "modal_px": [
+    145,
+    398.8,
+    2040,
+    661.2
+   ],
+   "scroll": null,
+   "dismiss": "Cancel (pinned footer), system Back, or a tap on the visible scrim; returns to the same viewer item, nothing is sent and any temporary copy is deleted",
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Can't make a copy without location",
+     "rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "live": "assertive",
+     "visible": "full",
+     "visible_rect_px": [
+      975,
+      456.8,
+      1148,
+      191.2
+     ]
+    },
+    {
+     "id": "item-identity",
+     "role": "image",
+     "label": "Photo being shared: Lake photo, 14 Jul 2024, 14:05 (synthetic)",
+     "rect_px": [
+      211,
+      530.1,
+      720,
+      430.0
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "image_px": [
+      262.7,
+      538.1,
+      196.6,
+      284.0
+     ]
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ],
+     "enabled": true,
+     "region": "scroll",
+     "visible": "full",
+     "visible_rect_px": [
+      979,
+      664.0,
+      1140,
+      152.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      979.0,
+      870.0,
+      1140.0,
+      150
+     ],
+     "enabled": true,
+     "region": "pinned",
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "item-identity",
+    "remove-location-state",
+    "cancel"
+   ],
+   "focused": "status-message",
+   "focus_ring_px": [
+    969,
+    450.8,
+    1160,
+    203.2
    ],
    "status": {
     "remove_location": "On",
