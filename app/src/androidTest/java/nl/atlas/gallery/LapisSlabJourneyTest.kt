@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelected
@@ -25,6 +26,7 @@ import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.assertFullyVisible
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
@@ -290,7 +292,16 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         val gap = if (neighbour > current) there.left - here.right else here.left - there.right
         assertTrue("neighbouring filmstrip targets touch without overlap: gap $gap px", abs(gap) <= 1f)
         val tag = items[neighbour].config[SemanticsProperties.TestTag]
-        compose.tap(hasTestTag(tag)) { compose.exists(hasTestTag(tag) and isSelected()) }
+        // A real pointer DOWN/UP at the neighbour's centre. The kit's tap()
+        // refuses a node that moves while the pointer is down, and this one
+        // does by design: on UP it becomes current and the strip recentres on
+        // it (one 48 dp stride, instantly with animations off). So check it is
+        // whole on screen first, then require the outcome.
+        compose.onNodeWithTag(tag).assertFullyVisible()
+        compose.onNodeWithTag(tag).performTouchInput { click(center) }
+        compose.awaitThat("the tapped neighbour to become the current item") {
+            compose.exists(hasTestTag(tag) and isSelected())
+        }
         compose.waitForNode(hasTestTag("atlas-filmstrip-sphere"), useUnmergedTree = true)
     }
 
