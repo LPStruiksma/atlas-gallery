@@ -12,6 +12,9 @@ import android.os.OperationCanceledException
 import android.os.StatFs
 import android.util.Size as AndroidSize
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -65,11 +68,17 @@ internal object MicroThumbnails {
     fun install(context: Context) {
         if (store != null) return
         resolver = context.applicationContext.contentResolver
-        val total = runCatching { StatFs(context.filesDir.absolutePath).totalBytes }.getOrDefault(0L)
-        // Survive Android cache eviction between launches. The existing byte budget
-        // still caps this app-private tier, and applyGrant clears it on revoke.
-        store = MicroThumbnailStore(File(context.noBackupFilesDir, "atlas-micro-v1"),
-            microThumbnailDiskBudgetBytes(total))
+        // Existing grant-correct reads are available immediately. Do not use the
+        // provisional fallback to admit writes or evict entries before refinement.
+        val microStore = MicroThumbnailStore(
+            File(context.noBackupFilesDir, "atlas-micro-v1"),
+            microThumbnailDiskBudgetBytes(0L), budgetPending = true
+        )
+        store = microStore
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            val total = runCatching { StatFs(context.filesDir.absolutePath).totalBytes }.getOrDefault(0L)
+            microStore.updateBudget(microThumbnailDiskBudgetBytes(total))
+        }
     }
 
     /**
@@ -203,7 +212,7 @@ internal fun makeAndStore(
     } catch (e: Exception) {
         null
     } ?: return null
-    if (!store.full()) {
+    if (store.budgetReady && !store.full()) {
         val bytes = ByteArrayOutputStream(4096).use { out ->
             if (bitmap.compress(Bitmap.CompressFormat.JPEG, MICRO_JPEG_QUALITY, out)) out.toByteArray() else null
         }

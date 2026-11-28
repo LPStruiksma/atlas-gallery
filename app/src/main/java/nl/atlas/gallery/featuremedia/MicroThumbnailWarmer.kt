@@ -146,6 +146,8 @@ internal suspend fun fillMicroStore(
 ): MicroThumbnailWarmer.Report {
     val started = System.currentTimeMillis()
     val ordered = items.sortedByDescending { it.takenAtMillis }
+    store.awaitBudget()
+    if (!active() || !gate()) return MicroThumbnailWarmer.Report(0, 0, 0, 0)
     if (store.bytesUsed < 0L) store.scan()
     var checked = 0
     var generated = 0
@@ -273,6 +275,8 @@ internal suspend fun fillMicroStorePaged(
 ): MicroThumbnailWarmer.Report {
     require(totalItems >= 0)
     val started = System.currentTimeMillis()
+    store.awaitBudget()
+    if (!active() || !gate()) return MicroThumbnailWarmer.Report(0, 0, 0, 0)
     if (store.bytesUsed < 0L) store.scan()
     var checked = 0
     var generated = 0
