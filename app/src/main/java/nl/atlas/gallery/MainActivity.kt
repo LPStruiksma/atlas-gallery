@@ -205,6 +205,10 @@ import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.LocalSearchControls
 import nl.atlas.gallery.featuresearch.personSearchLabel
+import nl.atlas.gallery.featuresearch.OverviewAdvancedMode
+import nl.atlas.gallery.featuresearch.OverviewUnionOrigin
+import nl.atlas.gallery.featuresearch.albumsOverviewUnion
+import nl.atlas.gallery.featuresearch.peopleOverviewUnion
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
 import nl.atlas.gallery.featuresearch.face.FaceSearchSession
 import nl.atlas.gallery.featuresearch.face.FaceSearchState
@@ -1095,6 +1099,14 @@ private fun rememberNativePersonUris(
     return resolved?.takeIf { it.first == keys }?.second
 }
 
+/**
+ * Like rememberUpdatedState, but by reference: a new publication with equal
+ * rows still replaces the value, and Compose never runs a 150k-row equals().
+ */
+@Composable
+private fun <T> rememberLatestReference(value: T): State<T> =
+    remember { mutableStateOf(value, referentialEqualityPolicy()) }.apply { this.value = value }
+
 /** Exact, testable route matching; never substitute a filename or folder display name. */
 internal fun matchesAlbumRoute(record: MediaRecord, route: AlbumRoute): Boolean {
     // INSIGHT-1 (#587): a Library insights type/year row reuses this route with a
@@ -1873,6 +1885,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Transient only: search text must not enter Android saved instance state.
     var overviewQuery by remember { mutableStateOf("") }
     var overviewScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
+    var overviewExpanded by remember { mutableStateOf(false) }
+    // FIND-2: this is a transient pointer to one *authorized overview publication*.
+    // Never save its URIs, use the picker as a source, or reuse it across a grant.
+    var advancedScreenSource by remember {
+        mutableStateOf<List<MediaRecord>?>(null, referentialEqualityPolicy())
+    }
+    var advancedScreenEpoch by remember { mutableLongStateOf(-1L) }
+    var advancedScreenRoute by remember { mutableStateOf<String?>(null) }
+    // FIND-2 F (#181): set when the source is the media union of an Albums or
+    // People list rather than the overview's own media list.
+    var advancedUnionOrigin by remember { mutableStateOf<OverviewUnionOrigin?>(null) }
+    var advancedUnionPending by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -2194,12 +2218,109 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val overviewRoute = "$tab:$album:$albumVolume:$personFilter:$nativePersonAlbum:$storiesOpen:$photoDnaOpen"
     LaunchedEffect(overviewRoute, searchGrant) {
         overviewQuery = ""
+        overviewExpanded = false
         overviewScope = if (tab == 3) AtlasSearchScope.LIBRARY else AtlasSearchScope.THIS_SCREEN
     }
     val overviewBase = when {
         personFilter != null -> selectedPersonPhotos.orEmpty()
         tab == 3 -> if (!searchActive) sorted else searched.orEmpty()
         else -> albumItems
+    }
+    // A refresh, route change or revoked permission invalidates this search
+    // immediately, before the old result grid can be composed or opened.
+    val nativePeopleGeneration = discovery.status?.people?.sourceGeneration
+    fun unionOriginCurrent(origin: OverviewUnionOrigin): Boolean = origin.isCurrent(
+        sorted, publishedGallery.epoch, overviewRoute, searchGrant,
+        peopleSource = if (origin.tracksPeople) people else null,
+        nativeGeneration = if (origin.tracksPeople) nativePeopleGeneration else null)
+    val unionOrigin = advancedUnionOrigin
+    val activeAdvancedSource = advancedScreenSource?.takeIf {
+        searchGrant != null && advancedScreenEpoch == publishedGallery.epoch &&
+            advancedScreenRoute == overviewRoute &&
+            (if (unionOrigin != null) unionOriginCurrent(unionOrigin) else it === overviewBase)
+    }
+    LaunchedEffect(activeAdvancedSource?.let(::CatalogSourceKey),
+        advancedScreenSource?.let(::CatalogSourceKey)) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            closeFaceSearch()
+            closeFindSimilar()
+            advancedScreenSource = null
+            advancedUnionOrigin = null
+        }
+    }
+    // One updated state per input: a reference to the local function above
+    // can compare equal across compositions and keep a stale closure.
+    val latestUnionSorted = rememberLatestReference(sorted)
+    val latestUnionEpoch = rememberUpdatedState(publishedGallery.epoch)
+    val latestUnionRoute = rememberUpdatedState(overviewRoute)
+    val latestUnionGrant = rememberUpdatedState(searchGrant)
+    val latestUnionPeople = rememberLatestReference(people)
+    val latestUnionNative = rememberUpdatedState(nativePeopleGeneration)
+    val latestUnionSortPending = rememberUpdatedState(sortPending)
+    fun unionOriginStillCurrent(origin: OverviewUnionOrigin): Boolean = origin.isCurrent(
+        latestUnionSorted.value, latestUnionEpoch.value, latestUnionRoute.value,
+        latestUnionGrant.value,
+        peopleSource = if (origin.tracksPeople) latestUnionPeople.value else null,
+        nativeGeneration = if (origin.tracksPeople) latestUnionNative.value else null)
+    /**
+     * FIND-2 F (#181): By face / By image from an Albums or People list. The
+     * union of the listed entries' authorized media is built on a worker
+     * (native People URIs on IO) and becomes the advanced search's source
+     * only if grant, epoch, route and source lists are unchanged when it lands.
+     */
+    fun startOverviewUnion(
+        mode: OverviewAdvancedMode, label: String, peopleUnion: Boolean,
+        nativeKeys: Set<String>,
+        build: (authorized: List<MediaRecord>, people: List<PersonEntry>,
+                nativeUris: Set<String>, checkpoint: () -> Unit) -> List<MediaRecord>
+    ) {
+        // Read the live inputs, never values a remembered click lambda captured.
+        val grant = latestUnionGrant.value ?: return
+        val authorized = latestUnionSorted.value
+        val reviewed = latestUnionPeople.value
+        if (latestUnionSortPending.value || advancedUnionPending ||
+            faceStep != null || similarStep != null) return
+        val origin = OverviewUnionOrigin(label, authorized, latestUnionEpoch.value,
+            latestUnionRoute.value, grant, peopleSource = if (peopleUnion) reviewed else null,
+            nativeGeneration = if (peopleUnion) latestUnionNative.value else null)
+        advancedUnionPending = true
+        atlasScope.launch {
+            try {
+                val nativeUris = if (nativeKeys.isEmpty()) emptySet() else
+                    withContext(Dispatchers.IO) {
+                        buildSet {
+                            // A person whose album can't be read under this grant
+                            // is left out: the source narrows, never widens.
+                            nativeKeys.forEach { key ->
+                                discoveryHost.personAlbumUris(grant, PersonKey(key))?.let(::addAll)
+                            }
+                        }
+                    }
+                val union = withContext(Dispatchers.Default) {
+                    val job = currentCoroutineContext()
+                    build(authorized, reviewed, nativeUris) { job.ensureActive() }
+                }
+                if (!unionOriginStillCurrent(origin)) {
+                    Log.i("ATLAS_FIND2", "overview union dropped: its source changed")
+                    return@launch
+                }
+                advancedUnionOrigin = origin
+                advancedScreenSource = union
+                advancedScreenEpoch = origin.epoch
+                advancedScreenRoute = origin.route
+                if (mode == OverviewAdvancedMode.FACE) {
+                    faceSession.clear()
+                    faceOrigin = null
+                    faceStep = FaceSearchStep.ChooseReference
+                } else {
+                    similarSession.clear()
+                    similarOrigin = null
+                    similarStep = FindSimilarStep.ChooseReference
+                }
+            } finally {
+                advancedUnionPending = false
+            }
+        }
     }
     var scopedResult by remember {
         mutableStateOf<ScopedMediaSearchSnapshot?>(null, referentialEqualityPolicy())
@@ -3608,15 +3729,24 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     val similarRoute = similarStep
     if (similarRoute != null) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            Text("This screen's photo access changed. Return to the overview.")
+            return
+        }
         FindSimilarRoute(
             session = similarSession,
             portVersion = faceHostVersion,
             step = similarRoute,
-            photos = sorted,
+            photos = activeAdvancedSource ?: sorted,
+            screenMedia = activeAdvancedSource,
+            screenLabel = advancedUnionOrigin?.label,
             onStep = { similarStep = it },
             onOpen = { items, record, _ ->
                 val current = similarResults
                 if (current != null && galleryAccessCurrent() &&
+                    readGalleryMediaGrant(context) == grants &&
+                    vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                    (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
                     items.all { row -> current.records.any { it.uri == row.uri } }) {
                     openViewer(items, record.uri)
@@ -3628,10 +3758,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 settingsOpen = true
             },
             onClose = {
-                // `visible` is still the results list in this frame: reopen the
-                // origin photo once the gallery list is shown again (below).
-                similarReturn = similarOrigin
+                // A scoped search returns to its origin, not a past viewer.
+                similarReturn = if (advancedScreenSource == null) similarOrigin else null
                 closeFindSimilar()
+                advancedScreenSource = null
+                advancedUnionOrigin = null
             },
             facetPeople = people,
             onSearchWholeLibrary = { closeFindSimilar(); tab = 3 },
@@ -3646,16 +3777,25 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
 
     val faceRoute = faceStep
     if (faceRoute != null) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            Text("This screen's photo access changed. Return to the overview.")
+            return
+        }
         FaceSearchRoute(
             port = facePort,
             portVersion = faceHostVersion,
             session = faceSession,
             step = faceRoute,
-            photos = sorted,
+            photos = activeAdvancedSource ?: sorted,
+            screenMedia = activeAdvancedSource,
+            screenLabel = advancedUnionOrigin?.label,
             onStep = { faceStep = it },
             onOpen = { items, record ->
                 val current = faceResults
                 if (current != null && galleryAccessCurrent() &&
+                    readGalleryMediaGrant(context) == grants &&
+                    vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                    (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
                     items.all { row -> current.records.any { it.uri == row.uri } }) {
                     openViewer(items, record.uri)
@@ -3677,8 +3817,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 hiddenNeedsSplittingOpen = false
             },
             onClose = {
-                val origin = faceOrigin
+                val origin = if (advancedScreenSource == null) faceOrigin else null
                 closeFaceSearch()
+                advancedScreenSource = null
+                advancedUnionOrigin = null
                 if (origin != null && origin.first === visible) openViewer(origin.first, origin.second)
             },
             facetPeople = people,
@@ -3971,6 +4113,44 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         if ((photosControls || personFilter != null) && !settingsOpen && !statusOpen) AtlasSearch(
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
+                            expandedState = overviewExpanded,
+                            onExpandedChange = { overviewExpanded = it },
+                            faceTool = {
+                                AssistChip(
+                                    onClick = {
+                                        if (searchGrant != null && !sortPending &&
+                                            !albumSelectionPending && !personAlbumPending) {
+                                            advancedUnionOrigin = null
+                                            advancedScreenSource = overviewBase
+                                            advancedScreenEpoch = publishedGallery.epoch
+                                            advancedScreenRoute = overviewRoute
+                                            faceSession.clear()
+                                            faceOrigin = null
+                                            faceStep = FaceSearchStep.ChooseReference
+                                        }
+                                    },
+                                    label = { Text("By face") },
+                                    modifier = Modifier.testTag("atlas-overview-by-face")
+                                )
+                            },
+                            imageTool = {
+                                AssistChip(
+                                    onClick = {
+                                        if (searchGrant != null && !sortPending &&
+                                            !albumSelectionPending && !personAlbumPending) {
+                                            advancedUnionOrigin = null
+                                            advancedScreenSource = overviewBase
+                                            advancedScreenEpoch = publishedGallery.epoch
+                                            advancedScreenRoute = overviewRoute
+                                            similarSession.clear()
+                                            similarOrigin = null
+                                            similarStep = FindSimilarStep.ChooseReference
+                                        }
+                                    },
+                                    label = { Text("By image") },
+                                    modifier = Modifier.testTag("atlas-overview-by-image")
+                                )
+                            },
                             selectedScope = overviewScope,
                             historyScope = when {
                                 personFilter != null -> SearchHistoryScope.PERSON
@@ -4549,6 +4729,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
                             onSearchWholeLibrary = { tab = 3 },
+                            searchQuery = overviewQuery,
+                            onSearchQueryChange = { overviewQuery = it },
+                            searchExpanded = overviewExpanded,
+                            onSearchExpandedChange = { overviewExpanded = it },
+                            onAdvancedSearch = { mode, displayed ->
+                                val filter = albumMediaFilter
+                                startOverviewUnion(mode, "Albums", peopleUnion = false,
+                                    nativeKeys = emptySet()) { authorized, _, _, checkpoint ->
+                                    albumsOverviewUnion(authorized, displayed, filter, checkpoint)
+                                }
+                            },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
                                 albumVolume = route.volumeName
@@ -4634,11 +4825,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 searchHistory.clear(SearchHistoryScope.GLOBAL)
                             },
                             onSearchByFace = {
+                                advancedScreenSource = null
+                                advancedUnionOrigin = null
                                 faceSession.clear()
                                 faceOrigin = null
                                 faceStep = FaceSearchStep.ChooseReference
                             },
                             onFindSimilar = {
+                                advancedScreenSource = null
+                                advancedUnionOrigin = null
                                 similarSession.clear()
                                 similarOrigin = null
                                 similarStep = FindSimilarStep.ChooseReference
@@ -4860,6 +5055,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 menuItems = peopleMenu,
                                 onOpenLibraryStatus = { settingsOpen = true },
                                 onSearchWholeLibrary = { tab = 3 },
+                                searchQuery = overviewQuery,
+                                onSearchQueryChange = { overviewQuery = it },
+                                searchExpanded = overviewExpanded,
+                                onSearchExpandedChange = { overviewExpanded = it },
+                                onAdvancedSearch = { mode, selection ->
+                                    startOverviewUnion(mode, "People", peopleUnion = true,
+                                        nativeKeys = selection.nativePersonKeys
+                                    ) { authorized, reviewed, nativeUris, checkpoint ->
+                                        val importedPaths = reviewed
+                                            .filter { it.id in selection.importedPersonIds }
+                                            .flatMapTo(HashSet()) { it.imagePaths }
+                                        peopleOverviewUnion(authorized, importedPaths, nativeUris, checkpoint)
+                                    }
+                                },
                                 portrait = { profile ->
                                     val record = profile.coverUri?.let {
                                         permittedCovers?.authorizedCoversByUri?.get(it)

@@ -3,6 +3,7 @@ package nl.atlas.gallery.featuresearch.visual
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,7 +40,12 @@ import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
+import nl.atlas.gallery.featuresearch.ScopedRankOrder
+import nl.atlas.gallery.featuresearch.scopeRankedHits
+import nl.atlas.gallery.CatalogSourceKey
+import nl.atlas.gallery.featurevisual.search.VisualSearchUiState
 import nl.atlas.gallery.featuresearch.face.FaceReferenceChooser
+import nl.atlas.gallery.featuresearch.face.screenScopeLine
 import nl.atlas.gallery.featurevisual.search.VisualSearchResultsScreen
 
 /** Where Find similar is; the host keeps it in memory only, never in saved state. */
@@ -71,10 +77,14 @@ fun FindSimilarRoute(
     onClose: () -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
     onSearchWholeLibrary: (() -> Unit)? = null,
+    screenMedia: List<MediaRecord>? = null,
+    /** FIND-2 F: the Albums/People list the source is a union of, for its literal return. */
+    screenLabel: String? = null,
     thumbnail: suspend (MediaRecord) -> ImageBitmap?
 ) {
     val scope = rememberCoroutineScope()
     var resultQuery by remember(step) { mutableStateOf("") }
+    var screenSort by remember(screenMedia?.let(::CatalogSourceKey)) { mutableStateOf(false) }
     val close by rememberUpdatedState(onClose)
     LaunchedEffect(session, portVersion) {
         withContext(Dispatchers.IO) { session.revalidate() }
@@ -95,64 +105,88 @@ fun FindSimilarRoute(
                     description = "Choose a photo to find others like it")
             }
             FindSimilarStep.Results -> {
-                BackHandler { close() }
+                BackHandler { if (screenMedia != null) onStep(FindSimilarStep.ChooseReference) else close() }
                 val state by session.state.collectAsState()
                 val ui = state.ui()
                 if (ui == null) {
                     Problem(state, onOpenSettings, onClose)
                 } else {
                     val results = state as? FindSimilarState.Results
-                    val source = results?.records
-                    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
-                        null, results, resultQuery, facetPeople
+                    // The visual engine is still global and owns the ranking.
+                    // Intersect its real hits with the authorized origin on a worker,
+                    // never widen results based on the chosen reference.
+                    val projection by produceState<Pair<FindSimilarState.Results, List<SimilarHit>>?>(
+                        null, results, resultQuery, facetPeople,
+                        screenMedia?.let(::CatalogSourceKey), screenSort
                     ) {
                         value = null
-                        if (results != null && source != null && resultQuery.isNotBlank()) {
+                        if (results != null) {
                             val worker = currentCoroutineContext()
-                            val matches = withContext(Dispatchers.Default) {
-                                scopedMediaMatches(source, source, facetPeople, resultQuery,
-                                    cancellationCheckpoint = { worker.ensureActive() })
+                            val narrowed = withContext(Dispatchers.Default) {
+                                val textUris = if (resultQuery.isBlank()) null else
+                                    scopedMediaMatches(results.records, results.records,
+                                        facetPeople, resultQuery,
+                                        cancellationCheckpoint = { worker.ensureActive() })
+                                        .mapTo(HashSet()) { it.uri }
+                                val hits = if (textUris == null) results.hits else
+                                    results.hits.filter { it.record.uri in textUris }
+                                scopeRankedHits(hits,
+                                    (screenMedia ?: results.records).map { it.uri },
+                                    { it.record.uri },
+                                    if (screenSort) ScopedRankOrder.SCREEN_SORT
+                                    else ScopedRankOrder.BEST_MATCHES)
                             }
-                            value = ScopedMediaSearchSnapshot(source, source, facetPeople,
-                                results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN, matches)
+                            worker.ensureActive()
+                            value = results to narrowed
                         }
                     }
-                    val filteredRecords = when {
-                        results == null -> null
-                        resultQuery.isBlank() -> source
-                        source == null -> null
-                        else -> currentScopedMediaSearchOrNull(searchSnapshot, source, source,
-                            facetPeople, results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN)
-                    }
-                    val visibleMedia = filteredRecords?.let { records ->
-                        val allowed = records.mapTo(HashSet()) { it.uri }
-                        results?.hits?.filter { it.record.uri in allowed }
-                            ?.mapTo(HashSet()) { it.hit.media }
+                    val shownHits = projection?.takeIf { it.first === results }?.second
+                    val currentList = shownHits?.map { it.record }
+                    val scopedUi = if (results != null && shownHits != null)
+                        VisualSearchUiState.Results(results.shown.copy(hits = shownHits.map { it.hit }))
+                        else ui
+                    if (screenMedia != null) Text(screenScopeLine(true, screenLabel, ""),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            .testTag("atlas-similar-scope-line"))
+                    if (screenMedia != null && results != null) Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { screenSort = !screenSort },
+                            modifier = Modifier.testTag("atlas-similar-screen-sort")) {
+                            Text(if (screenSort) "Best matches" else "Screen sort")
+                        }
+                        if (screenLabel != null) TextButton(onClick = onClose,
+                            modifier = Modifier.testTag("atlas-similar-return-origin")) {
+                            Text("Back to $screenLabel")
+                        }
                     }
                     VisualSearchResultsScreen(
-                        state = ui,
+                        state = scopedUi,
                         poseEnabled = results?.poseEnabled == true,
                         onPoseToggle = { on -> scope.launch { session.setPose(on) } },
                         onOpen = { media ->
                             val shown = session.state.value as? FindSimilarState.Results
                             val hit = shown?.hitFor(media) ?: return@VisualSearchResultsScreen
-                            val currentList = if (resultQuery.isBlank()) shown.records
-                                else filteredRecords?.takeIf { results === shown }
+                            val actualList = currentList?.takeIf { results === shown }
                             scope.launch {
-                                // Revalidate the grant AND identity of the ranked result.
                                 if (withContext(Dispatchers.IO) { session.revalidate() } &&
-                                    session.state.value === shown && currentList != null &&
-                                    currentList.any { it.uri == hit.record.uri }) {
-                                    onOpen(currentList, hit.record, shown.startPositions)
+                                    session.state.value === shown && actualList != null &&
+                                    actualList.any { it.uri == hit.record.uri }) {
+                                    onOpen(actualList, hit.record, shown.startPositions)
                                 }
                             }
                         },
-                        onBack = onClose,
+                        onBack = { if (screenMedia != null) onStep(FindSimilarStep.ChooseReference)
+                            else onClose() },
                         searchQuery = resultQuery,
                         onSearchQueryChange = { resultQuery = it },
                         onSearchWholeLibrary = onSearchWholeLibrary,
-                        visibleMedia = visibleMedia,
-                        filtering = resultQuery.isNotBlank() && filteredRecords == null,
+                        // VisualSearchResultsScreen also applies its text-query
+                        // allowlist. Pass the exact projected media identities
+                        // or it would erase every hit for a nonempty query.
+                        visibleMedia = shownHits?.mapTo(HashSet()) { it.hit.media },
+                        filtering = results != null && shownHits == null,
                         thumbnail = { media ->
                             (session.state.value as? FindSimilarState.Results)
                                 ?.hitFor(media)?.record?.let { thumbnail(it) }

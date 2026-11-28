@@ -67,6 +67,8 @@ import nl.atlas.gallery.featuresearch.AtlasSearch
 import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNamedMatches
+import nl.atlas.gallery.featuresearch.OverviewAdvancedChip
+import nl.atlas.gallery.featuresearch.OverviewAdvancedMode
 import java.text.NumberFormat
 
 private fun mediaSummary(album: AlbumSummary): String {
@@ -326,9 +328,27 @@ fun AtlasAlbumsScreen(
      * Receives the whole new display order after a drag (or a TalkBack move).
      * Pinned albums never move; the caller switches the sort to Custom.
      */
-    onReorderAlbums: ((List<AlbumSummary>) -> Unit)? = null
+    onReorderAlbums: ((List<AlbumSummary>) -> Unit)? = null,
+    /**
+     * FIND-2 (#181): host-held list query and expanded state, so a By face or
+     * By image search returns to this exact filtered list. Null keeps them local.
+     */
+    searchQuery: String? = null,
+    onSearchQueryChange: (String) -> Unit = {},
+    searchExpanded: Boolean? = null,
+    onSearchExpandedChange: (Boolean) -> Unit = {},
+    /**
+     * FIND-2 (#181) F: By face / By image over the media of the albums this
+     * list shows right now (after its name filter). The host builds the union.
+     */
+    onAdvancedSearch: ((OverviewAdvancedMode, List<AlbumSummary>) -> Unit)? = null
 ) {
-    var searchText by remember { mutableStateOf("") }
+    var localSearchText by remember { mutableStateOf("") }
+    val searchText = searchQuery ?: localSearchText
+    val setSearchText: (String) -> Unit = {
+        localSearchText = it
+        onSearchQueryChange(it)
+    }
     val displayedAlbums = remember(AlbumPresentationListKey(albums), searchText) {
         scopedNamedMatches(albums, searchText) { it.title }
     }
@@ -347,7 +367,21 @@ fun AtlasAlbumsScreen(
                     "Hide albums", "atlas-albums-menu-hide", onClick = onOpenHideAlbums))
             },
             actions = {
-                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                AtlasSearch(query = searchText, onQueryChange = setSearchText,
+                    expandedState = searchExpanded,
+                    onExpandedChange = onSearchExpandedChange,
+                    faceTool = onAdvancedSearch?.let { advanced -> {
+                        OverviewAdvancedChip(OverviewAdvancedMode.FACE, "atlas-albums-by-face",
+                            enabled = displayedAlbums.isNotEmpty()) {
+                            advanced(OverviewAdvancedMode.FACE, displayedAlbums)
+                        }
+                    } },
+                    imageTool = onAdvancedSearch?.let { advanced -> {
+                        OverviewAdvancedChip(OverviewAdvancedMode.IMAGE, "atlas-albums-by-image",
+                            enabled = displayedAlbums.isNotEmpty()) {
+                            advanced(OverviewAdvancedMode.IMAGE, displayedAlbums)
+                        }
+                    } },
                     historyScope = SearchHistoryScope.ALBUMS,
                     onScopeChange = { scope ->
                         if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
