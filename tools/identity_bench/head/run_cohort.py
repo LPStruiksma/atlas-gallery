@@ -392,6 +392,58 @@ def _stage_path(work: Path, pid: str, stage: str) -> Path:
     return work / "pairs" / f"{pid}.{stage}.json"
 
 
+STAGES = ("baseline", "candidate")
+
+
+def stage_outputs(pid: str, stage: str) -> tuple[str, ...]:
+    """Image files a finished stage leaves in the work directory's pairs folder."""
+    return (f"{pid}.candidate.png", f"{pid}.candidate_raw.png") if stage == "candidate" else (f"{pid}.baseline.png",)
+
+
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with Path(path).open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def binding(cohort: dict, pair: dict, stage: str) -> dict:
+    """What a checkpoint must be bound to: this frozen cohort, this pair and stage, its inputs and fence."""
+    return {"cohort_digest": cohort["pairs_digest"], "pair_id": pair["pair_id"], "stage": stage,
+            "target_sha256": pair["target_sha256"], "reference_sha256": pair["reference_sha256"],
+            "seed": pair["seed"] if stage == "candidate" else None, "fence_hash": pair["fence_hash"]}
+
+
+def validate_checkpoint(cohort: dict, pair: dict, stage: str, rec: dict, pairs_dir: Path) -> list[str]:
+    """Problems that make a checkpoint unusable. Empty means bound to the frozen cohort and its outputs unchanged."""
+    pid, probs = pair["pair_id"], []
+    if not isinstance(rec, dict):
+        return [f"{pid}.{stage}: checkpoint is not an object"]
+    if rec.get("pair_id") != pid or rec.get("stage") != stage:
+        probs.append(f"{pid}.{stage}: checkpoint names pair {rec.get('pair_id')!r} stage {rec.get('stage')!r}")
+    if rec.get("binding") != binding(cohort, pair, stage):
+        probs.append(f"{pid}.{stage}: binding missing or differs from the frozen cohort")
+    if rec.get("status") == "ok":
+        outs = rec.get("outputs_sha256")
+        if not isinstance(outs, dict):
+            probs.append(f"{pid}.{stage}: no recorded output hashes")
+            outs = {}
+        for name in stage_outputs(pid, stage):
+            path = Path(pairs_dir) / name
+            if name not in outs:
+                probs.append(f"{pid}.{stage}: no recorded hash for {name}")
+            elif not path.exists():
+                probs.append(f"{pid}.{stage}: {name} is missing")
+            elif file_sha256(path) != outs[name]:
+                probs.append(f"{pid}.{stage}: {name} differs from its recorded hash")
+        if stage == "candidate" and rec.get("files_sha256") != cohort["candidate"]["components_sha256"]:
+            probs.append(f"{pid}.{stage}: model, text encoder, VAE or adapter file differs from the frozen components")
+    elif rec.get("status") != "failed":
+        probs.append(f"{pid}.{stage}: status {rec.get('status')!r} is neither ok nor failed")
+    return probs
+
+
 def cmd_run(args) -> int:
     import cv2
     work, models = Path(args.work), Path(args.models)
@@ -419,6 +471,8 @@ def cmd_run(args) -> int:
         if "engine" not in state:
             state["engine"] = probe.KleinEngine(models, CANDIDATE_QUANT, lora=True, threads=args.threads)
             state["files"] = {k: probe.sha256(models / k) for k in cohort["candidate"]["components_sha256"]}
+            if state["files"] != cohort["candidate"]["components_sha256"]:
+                raise RuntimeError(f"loaded files differ from the frozen components: {state['files']}")
         return state["engine"]
 
     def bench_tools():
@@ -431,8 +485,11 @@ def cmd_run(args) -> int:
         p = pairs[pid]
         target, reference = probe._read(fx / f"{p['target_id']}.png"), probe._read(fx / f"{p['reference_id']}.png")
         fence = fence_for(p["target_id"], target)
-        rec = {"pair_id": pid, "stage": args.stage, "host": probe.host_info(), "versions": _versions(),
+        rec = {"pair_id": pid, "stage": args.stage, "binding": binding(cohort, p, args.stage), "binding_recorded": "at_run",
+               "host": probe.host_info(), "versions": _versions(),
                "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        if args.stage == "candidate":
+            engine()  # outside the per-pair try: a component mismatch stops the run instead of failing pairs
         t0 = time.time()
         try:
             if args.stage == "candidate":
@@ -455,6 +512,7 @@ def cmd_run(args) -> int:
                 rec.update(seconds={"total": round(time.time() - t0, 2)}, notes=sw.notes,
                            baseline_pixels_outside_fence_reset=outside_changed)
             cv2.imwrite(str(work / "pairs" / f"{pid}.{args.stage}.png"), out)
+            rec["outputs_sha256"] = {n: file_sha256(work / "pairs" / n) for n in stage_outputs(pid, args.stage)}
             rec["measure"] = m.measure(target, reference, out, fence, mask)
             rec["status"] = "ok"
         except Exception as exc:  # noqa: BLE001  (a failed pair stays in N with its reason)
@@ -465,8 +523,58 @@ def cmd_run(args) -> int:
         cls = rec.get("measure", {}).get("classification", rec.get("error"))
         print(pid, args.stage, rec["status"], cls, rec["wall_s"], "s", rec["peak_rss_mb"], "MB", flush=True)
 
-    ran = run_pending(list(pairs), lambda pid: _stage_path(work, pid, args.stage).exists(), do_pair, args.pairs)
+    def done(pid):
+        path = _stage_path(work, pid, args.stage)
+        if not path.exists():
+            return False
+        probs = validate_checkpoint(cohort, pairs[pid], args.stage, json.loads(path.read_text()), work / "pairs")
+        if probs:  # fail closed: never resume past a stale or altered checkpoint
+            raise RuntimeError("; ".join(probs))
+        return True
+
+    ran = run_pending(list(pairs), done, do_pair, args.pairs)
     print("ran", len(ran), "pairs")
+    return 0
+
+
+LEGACY_NOTE = ("backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. "
+               "Fixture hashes were checked against cohort.json when the run started and again now; the seed was "
+               "taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files "
+               "retained in the work directory, not hashes recorded at write time")
+
+
+def bind_legacy(cohort: dict, pair: dict, stage: str, rec: dict, pairs_dir: Path, note: str = LEGACY_NOTE) -> dict:
+    """Add binding and output hashes to a checkpoint written before they existed. Refuses anything it cannot vouch for."""
+    pid = pair["pair_id"]
+    if "binding" in rec:
+        raise ValueError(f"{pid}.{stage}: already bound")
+    if rec.get("pair_id") != pid or rec.get("stage") != stage:
+        raise ValueError(f"{pid}.{stage}: checkpoint names another pair or stage")
+    if stage == "candidate" and rec.get("status") == "ok" and rec.get("files_sha256") != cohort["candidate"]["components_sha256"]:
+        raise ValueError(f"{pid}.{stage}: recorded component files differ from the frozen ones")
+    out = dict(rec, binding=binding(cohort, pair, stage), binding_recorded=note)
+    if rec.get("status") == "ok":
+        out["outputs_sha256"] = {n: file_sha256(Path(pairs_dir) / n) for n in stage_outputs(pid, stage)}
+    return out
+
+
+def cmd_bind(args) -> int:
+    work = Path(args.work)
+    cohort = load_cohort()
+    for name, person in cohort["people"].items():
+        if file_sha256(work / "fixtures" / f"{name}.png") != person["sha256"]:
+            print(f"fixture {name} differs from the frozen cohort", file=sys.stderr)
+            return 1
+    for p in cohort["pairs"]:
+        for stage in STAGES:
+            path = _stage_path(work, p["pair_id"], stage)
+            if not path.exists():
+                continue
+            rec = json.loads(path.read_text())
+            if "binding" in rec:
+                continue
+            write_atomic(path, json.dumps(bind_legacy(cohort, p, stage, rec, work / "pairs"), indent=1))
+            print("bound", p["pair_id"], stage)
     return 0
 
 
@@ -530,6 +638,7 @@ def build_row(pair: dict, cand: dict | None, base: dict | None) -> dict:
         files = cand.get("files_sha256", {})
         row["model_file_sha256"] = _m(files.get(f"klein-{CANDIDATE_QUANT}.gguf"), "SHA-256 of the file loaded at run time")
         row["adapter_file_sha256"] = _m(files.get("loras/bfs_head_v1.safetensors"), "SHA-256 of the file loaded at run time")
+        row["component_files_sha256"] = _m(dict(files), "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)")
         row["scores"] = {k: ms["score"].get(k) for k in ("id_to_reference", "id_to_target", "id_reference_vs_target",
                                                          "yaw", "hair_ratio", "hair_dE_to_reference", "hair_dE_to_target",
                                                          "target_head_unchanged_frac", "face_neck_dE")}
@@ -542,6 +651,75 @@ def build_row(pair: dict, cand: dict | None, base: dict | None) -> dict:
     else:
         row["baseline"] = _nm("baseline stage not run" if base is None else f"baseline failed: {base.get('error')}")
     return row
+
+
+def gate_summary(cohort: dict, rows: list[dict], report: dict) -> dict:
+    """Per-gate pass/fail IDs with reasons, derived from the rows (the frozen evaluator reports counts only).
+
+    Uses the evaluator's own definitions; it never reclassifies a row.
+    """
+    pids = [p["pair_id"] for p in cohort["pairs"]]
+    by = {r["pair_id"]: r for r in rows}
+    gates = {g["gate"]: g for g in report["gates"]}
+
+    def val(r, k):
+        state, v = quality.measured(r, k) if r is not None else ("invalid", None)
+        return v if state == "ok" else None
+
+    def why_not(r, k):
+        f = (r or {}).get(k)
+        return f.get("reason") if isinstance(f, dict) and f.get("status") == "not_measured" else "missing or invalid"
+
+    whole = {"passed": [], "failed": {}}
+    fence = {"passed": [], "failed": {}}
+    scale = {"errors": {}, "not_measured": {}}
+    for pid in pids:
+        r = by.get(pid)
+        cls, pose = val(r, "classification"), val(r, "target_pose_preserved")
+        reasons = []
+        if cls is None:
+            reasons.append(f"classification not measured: {why_not(r, 'classification')}")
+        elif cls != "full_head":
+            reasons.append(f"classification={cls}")
+        if pose is None:
+            reasons.append(f"target pose not measured: {why_not(r, 'target_pose_preserved')}")
+        elif pose is not True:
+            reasons.append("target pose not preserved")
+        if reasons:
+            whole["failed"][pid] = reasons
+        else:
+            whole["passed"].append(pid)
+        of = val(r, "outside_fence")
+        if isinstance(of, dict) and of.get("equal") is True:
+            fence["passed"].append(pid)
+        else:
+            fence["failed"][pid] = "outside-fence pixels differ" if isinstance(of, dict) else why_not(r, "outside_fence")
+        err = val(r, "head_scale_rel_error")
+        if isinstance(err, (int, float)):
+            scale["errors"][pid] = err
+        else:
+            scale["not_measured"][pid] = why_not(r, "head_scale_rel_error")
+    ident = {}
+    for pid in pids:
+        entries = val(by.get(pid), "identity") or []
+        capable = sorted({e["source"] for e in entries if e.get("profile_capable") is True and e.get("outcome") in ("preserved", "not_preserved")})
+        ident[pid] = {"profile_capable_sources": capable,
+                      "outcomes": {e["source"]: e.get("outcome") for e in entries},
+                      "reason": None if len(capable) >= quality.EXPECTED_JUDGES else
+                      f"{len(capable)} profile-capable source(s); the rubric needs {quality.EXPECTED_JUDGES}"}
+    return {
+        "note": "Derived from rows.json with the frozen evaluator's definitions; lists the IDs behind each gate count.",
+        "rubric_revision": report["rubric_revision"], "verdict": report["verdict"], "denominator": len(pids),
+        "whole_head_and_pose": dict(status=gates["whole_head_and_pose"]["status"], threshold=quality.WHOLE_HEAD_POSE_MIN, **whole),
+        "edit_fence": dict(status=gates["edit_fence"]["status"], **fence),
+        "scale": dict(status=gates["scale"]["status"], threshold=quality.SCALE_MEDIAN_MAX,
+                      median=gates["scale"]["median_abs_rel_error"], **scale),
+        "new_hair_hairline": {"status": gates["new_hair_hairline"]["status"],
+                              "not_measured": {pid: why_not(by.get(pid), "hair_votes") for pid in pids}},
+        "neck_seam": {"status": gates["neck_seam"]["status"],
+                      "not_measured": {pid: why_not(by.get(pid), "seam_votes") for pid in pids}},
+        "profile_identity": {"status": gates["profile_identity"]["status"], "pairs": ident},
+    }
 
 
 def jpeg_has_metadata(data: bytes) -> bool:
@@ -595,11 +773,30 @@ def cmd_export(args) -> int:
     cohort = load_cohort()
     pids = [p["pair_id"] for p in cohort["pairs"]]
     stage = lambda pid, s: json.loads(_stage_path(work, pid, s).read_text()) if _stage_path(work, pid, s).exists() else None  # noqa: E731
+    probs = [f"fixture {n} differs from the frozen cohort" for n, person in cohort["people"].items()
+             if file_sha256(work / "fixtures" / f"{n}.png") != person["sha256"]]
+    provenance = {"cohort_digest": cohort["pairs_digest"], "fixtures_sha256_verified": not probs, "pairs": {}}
+    for p in cohort["pairs"]:
+        for s in STAGES:
+            rec = stage(p["pair_id"], s)
+            if rec is None:
+                continue
+            probs += validate_checkpoint(cohort, p, s, rec, work / "pairs")
+            provenance["pairs"].setdefault(p["pair_id"], {})[s] = {
+                "status": rec.get("status"), "binding": rec.get("binding"), "binding_recorded": rec.get("binding_recorded"),
+                "checkpoint_sha256": file_sha256(_stage_path(work, p["pair_id"], s)),
+                "outputs_sha256": rec.get("outputs_sha256"), "started": rec.get("started"),
+                **({"components_sha256": rec.get("files_sha256")} if s == "candidate" else {})}
+    if probs:  # fail closed: no rows or sheets from unbound or altered evidence
+        print("refusing to export:", *probs, sep="\n  ", file=sys.stderr)
+        return 1
     rows = [build_row(p, stage(p["pair_id"], "candidate"), stage(p["pair_id"], "baseline")) for p in cohort["pairs"]]
     RESULTS.mkdir(parents=True, exist_ok=True)
     (RESULTS / "rows.json").write_text(json.dumps(rows, indent=1) + "\n")
     report = quality.evaluate(cohort, rows)
     (RESULTS / "evaluator-report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
+    (RESULTS / "gate-summary.json").write_text(json.dumps(gate_summary(cohort, rows, report), indent=1) + "\n")
+    (RESULTS / "provenance.json").write_text(json.dumps(provenance, indent=1) + "\n")
     # Run log summary: host, runtime versions, wall time per pair.
     fxlog = json.loads((work / "fixtures" / "fixtures_log.json").read_text())
     per_pair = {}
@@ -639,7 +836,7 @@ def cmd_export(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name, fn in (("fixtures", cmd_fixtures), ("freeze", cmd_freeze), ("run", cmd_run), ("export", cmd_export)):
+    for name, fn in (("fixtures", cmd_fixtures), ("freeze", cmd_freeze), ("run", cmd_run), ("bind", cmd_bind), ("export", cmd_export)):
         p = sub.add_parser(name)
         p.add_argument("--models", required=True, help="directory holding the probe's fetched weights")
         p.add_argument("--work", required=True, help="work directory for fixtures and outputs (outside git)")

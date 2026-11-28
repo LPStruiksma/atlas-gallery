@@ -217,6 +217,119 @@ class RowFormatTest(unittest.TestCase):
         self.assertEqual({x["outcome"] for x in quality.measured(row, "identity")[1]}, {"abstain"})
 
 
+def frozen_pair(i=0):
+    p = dict(rc.plan_pairs()[i], target_sha256="1" * 64, reference_sha256="2" * 64, fence_hash="3" * 64)
+    p["pose_tag"] = p["intended_pose"]
+    return p
+
+
+FAKE_COHORT = {"pairs_digest": "9" * 64,
+               "candidate": {"components_sha256": {"klein-Q4_0.gguf": "a" * 64, "loras/bfs_head_v1.safetensors": "b" * 64}}}
+
+
+class ProvenanceTest(unittest.TestCase):
+    """Resume and export accept only checkpoints bound to the frozen cohort with unchanged outputs."""
+
+    def make(self, tmp, stage="candidate", status="ok"):
+        pair, d = frozen_pair(), Path(tmp)
+        for name in rc.stage_outputs(pair["pair_id"], stage):
+            (d / name).write_bytes(name.encode())
+        rec = {"pair_id": pair["pair_id"], "stage": stage, "status": status,
+               "binding": rc.binding(FAKE_COHORT, pair, stage),
+               "outputs_sha256": {n: rc.file_sha256(d / n) for n in rc.stage_outputs(pair["pair_id"], stage)}}
+        if stage == "candidate":
+            rec["files_sha256"] = dict(FAKE_COHORT["candidate"]["components_sha256"])
+        return pair, d, rec
+
+    def test_bound_checkpoint_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for stage in rc.STAGES:
+                pair, d, rec = self.make(tmp, stage)
+                self.assertEqual(rc.validate_checkpoint(FAKE_COHORT, pair, stage, rec, d), [])
+
+    def test_altered_output_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            (d / f"{pair['pair_id']}.candidate.png").write_bytes(b"replaced")
+            self.assertTrue(any("differs from its recorded hash" in x for x in rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", rec, d)))
+            (d / f"{pair['pair_id']}.candidate.png").unlink()
+            self.assertTrue(any("missing" in x for x in rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", rec, d)))
+
+    def test_stale_or_foreign_checkpoint_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            other = dict(FAKE_COHORT, pairs_digest="8" * 64)
+            self.assertTrue(rc.validate_checkpoint(other, pair, "candidate", rec, d))  # another freeze
+            self.assertTrue(rc.validate_checkpoint(FAKE_COHORT, dict(pair, seed=pair["seed"] + 1), "candidate", rec, d))
+            self.assertTrue(rc.validate_checkpoint(FAKE_COHORT, dict(pair, target_sha256="4" * 64), "candidate", rec, d))
+            self.assertTrue(rc.validate_checkpoint(FAKE_COHORT, pair, "baseline", rec, d))  # wrong stage
+            self.assertTrue(rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", {k: v for k, v in rec.items() if k != "binding"}, d))
+            self.assertTrue(rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", dict(rec, outputs_sha256=None), d))
+
+    def test_component_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            rec["files_sha256"] = dict(rec["files_sha256"], **{"qwen3-4b-Q4_K_M.gguf": "e" * 64})
+            self.assertTrue(any("frozen components" in x for x in rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", rec, d)))
+
+    def test_failed_pair_needs_binding_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp, status="failed")
+            self.assertEqual(rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", dict(rec, outputs_sha256=None), d), [])
+
+    def test_resume_fails_closed_on_bad_checkpoint(self):
+        def done(pid):
+            raise RuntimeError("binding differs")
+        with self.assertRaises(RuntimeError):
+            rc.run_pending(["f01"], done, lambda pid: None)
+
+    def test_bind_legacy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            legacy = {k: v for k, v in rec.items() if k not in ("binding", "outputs_sha256")}
+            bound = rc.bind_legacy(FAKE_COHORT, pair, "candidate", legacy, d)
+            self.assertEqual(rc.validate_checkpoint(FAKE_COHORT, pair, "candidate", bound, d), [])
+            self.assertIn("backfilled", bound["binding_recorded"])
+            with self.assertRaises(ValueError):
+                rc.bind_legacy(FAKE_COHORT, pair, "candidate", bound, d)  # never re-bind
+            with self.assertRaises(ValueError):
+                rc.bind_legacy(FAKE_COHORT, pair, "candidate", dict(legacy, files_sha256={"x": "y"}), d)
+            with self.assertRaises(ValueError):
+                rc.bind_legacy(FAKE_COHORT, pair, "baseline", legacy, d)
+
+
+class GateSummaryTest(unittest.TestCase):
+    def reconcile(self, summary, report, pids):
+        w = summary["whole_head_and_pose"]
+        self.assertEqual(sorted(w["passed"] + list(w["failed"])), sorted(pids))
+        self.assertFalse(set(w["passed"]) & set(w["failed"]))
+        self.assertTrue(all(w["failed"].values()))  # every failed pair names a reason
+        gate = {g["gate"]: g for g in report["gates"]}
+        self.assertEqual(len(w["passed"]), gate["whole_head_and_pose"]["passed"])
+        self.assertEqual(summary["denominator"], gate["whole_head_and_pose"]["denominator"])
+        f = summary["edit_fence"]
+        self.assertEqual(sorted(f["passed"] + list(f["failed"])), sorted(pids))
+        sc = summary["scale"]
+        self.assertEqual(sorted(list(sc["errors"]) + list(sc["not_measured"])), sorted(pids))
+        self.assertFalse(set(sc["errors"]) & set(sc["not_measured"]))
+
+    def test_partition_with_failures(self):
+        pairs = [frozen_pair(i) for i in range(20)]
+        stages = [fake_stage(cls="no_swap") if i < 5 else fake_stage(pose=False) if i < 7 else
+                  fake_stage(status="failed") if i == 7 else fake_stage() for i in range(20)]
+        rows = [rc.build_row(p, c, None) for p, c in zip(pairs, stages)]
+        cohort = {"rubric_revision": quality.RUBRIC_REVISION, "pairs": pairs}
+        report = quality.evaluate(cohort, rows)
+        summary = rc.gate_summary(cohort, rows, report)
+        self.reconcile(summary, report, [p["pair_id"] for p in pairs])
+        w = summary["whole_head_and_pose"]
+        self.assertEqual(len(w["passed"]), 12)
+        self.assertEqual(w["failed"]["f01"], ["classification=no_swap"])
+        self.assertEqual(w["failed"]["f06"], ["target pose not preserved"])
+        self.assertTrue(w["failed"]["f08"][0].startswith("classification not measured"))
+        self.assertIn("profile-capable", summary["profile_identity"]["pairs"]["f01"]["reason"])
+
+
 class CommittedResultsTest(unittest.TestCase):
     """The rows and sheets from the real run, once committed."""
 
@@ -232,6 +345,32 @@ class CommittedResultsTest(unittest.TestCase):
             for k, pin in (("model_file_sha256", "model_sha256"), ("adapter_file_sha256", "adapter_sha256")):
                 if k in r:
                     self.assertEqual(r[k]["value"], r[pin])
+
+    def test_gate_summary_lists_every_id(self):
+        report = load(rc.RESULTS / "evaluator-report.json")
+        summary = load(rc.RESULTS / "gate-summary.json")
+        self.assertEqual(summary, json.loads(json.dumps(rc.gate_summary(self.cohort, self.rows, report))))
+        GateSummaryTest.reconcile(self, summary, report, [p["pair_id"] for p in self.cohort["pairs"]])
+
+    def test_provenance_binds_every_stage(self):
+        prov = load(rc.RESULTS / "provenance.json")
+        self.assertEqual(prov["cohort_digest"], self.cohort["pairs_digest"])
+        self.assertTrue(prov["fixtures_sha256_verified"])
+        for p in self.cohort["pairs"]:
+            for stage in rc.STAGES:
+                entry = prov["pairs"][p["pair_id"]][stage]
+                self.assertEqual(entry["binding"], rc.binding(self.cohort, p, stage))
+                self.assertTrue(entry["binding_recorded"])
+                self.assertRegex(entry["checkpoint_sha256"], HEX64)
+                if entry["status"] == "ok":
+                    self.assertEqual(sorted(entry["outputs_sha256"]), sorted(rc.stage_outputs(p["pair_id"], stage)))
+                if stage == "candidate":
+                    self.assertEqual(entry["components_sha256"], self.cohort["candidate"]["components_sha256"])
+
+    def test_rows_carry_all_frozen_components(self):
+        for r in self.rows:
+            if quality.measured(r, "classification")[0] == "ok":
+                self.assertEqual(r["component_files_sha256"]["value"], self.cohort["candidate"]["components_sha256"])
 
     def test_report_is_the_evaluator_output(self):
         report = load(rc.RESULTS / "evaluator-report.json")
@@ -249,7 +388,7 @@ class CommittedResultsTest(unittest.TestCase):
         self.assertFalse(list((rc.RESULTS / "sheets").glob("*key*")))  # the key lives outside the sheets folder
 
     def test_no_raw_images_committed(self):
-        allowed = {".json", ".jpg", ".csv", ".md"}
+        allowed = {".json", ".jpg", ".csv", ".md"}  # no PNG outputs, fixtures or weights
         for f in rc.RESULTS.rglob("*"):
             if f.is_file():
                 self.assertIn(f.suffix, allowed, f)

@@ -101,6 +101,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.568,
    "id_to_target": 0.478,
@@ -235,6 +245,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.514,
@@ -371,6 +391,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.436,
    "id_to_target": 0.452,
@@ -505,6 +535,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.767,
@@ -641,6 +681,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.741,
    "id_to_target": 0.411,
@@ -775,6 +825,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.625,
@@ -911,6 +971,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.54,
    "id_to_target": 0.285,
@@ -1045,6 +1115,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.493,
@@ -1181,6 +1261,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.555,
    "id_to_target": 0.513,
@@ -1315,6 +1405,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.509,
@@ -1451,6 +1551,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.491,
    "id_to_target": 0.452,
@@ -1585,6 +1695,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.578,
@@ -1721,6 +1841,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.557,
    "id_to_target": 0.298,
@@ -1855,6 +1985,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.756,
@@ -1991,6 +2131,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.642,
    "id_to_target": 0.379,
@@ -2125,6 +2275,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.724,
@@ -2261,6 +2421,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.407,
    "id_to_target": 0.406,
@@ -2395,6 +2565,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.487,
@@ -2531,6 +2711,16 @@
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
   },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
+  },
   "scores": {
    "id_to_reference": 0.504,
    "id_to_target": 0.382,
@@ -2665,6 +2855,16 @@
    "status": "measured",
    "value": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c",
    "method": "SHA-256 of the file loaded at run time"
+  },
+  "component_files_sha256": {
+   "status": "measured",
+   "value": {
+    "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+    "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+    "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+    "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+   },
+   "method": "SHA-256 of every candidate file loaded at run time (model, text encoder, VAE, adapter)"
   },
   "scores": {
    "id_to_reference": 0.493,

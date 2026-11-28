@@ -1,0 +1,906 @@
+{
+ "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+ "fixtures_sha256_verified": true,
+ "pairs": {
+  "f01": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f01",
+     "stage": "baseline",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": null,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "c394629ac0d24b73ee0656c8a7743fc8b43b5e64058bf0a03bccbe17e42df4fc",
+    "outputs_sha256": {
+     "f01.baseline.png": "4a2222fa6f2217e6c683994a0a11114783888aa39c5fbbe29c54f8548130821f"
+    },
+    "started": "2026-11-28T02:26:48Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f01",
+     "stage": "candidate",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": 109100,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "8535cc6960aea76e4218f20f98732a7f60bcfebf06e3dace6d9d66f3c5c271dc",
+    "outputs_sha256": {
+     "f01.candidate.png": "769ea478135029465f36d413929a2e2cb9a29164512cb344d7ac925170d36aa1",
+     "f01.candidate_raw.png": "201e5f1613d2110dfc1076e2495229434fb3958de720085c906cda5acf6ae523"
+    },
+    "started": "2026-11-27T22:16:26Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f02": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f02",
+     "stage": "baseline",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": null,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "2ac30ca5b1f3a4d17223302a60898ad943304f3ef2c19237e4ab6f229842bff3",
+    "outputs_sha256": {
+     "f02.baseline.png": "a1f2b70f5923754e1ea2744f4fc5d0311515579d3ef6c405aab94705f8650101"
+    },
+    "started": "2026-11-27T22:14:18Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f02",
+     "stage": "candidate",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": 109101,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "4438c558c29cacf15e9ab8cfd6cbfb477b26cf9beb335b5a2aa5a66f2e743913",
+    "outputs_sha256": {
+     "f02.candidate.png": "daf3f97f7746f00b4daee36cfe22733e6a733908b91a5a4b6a9cda6c29a3ecd1",
+     "f02.candidate_raw.png": "e59146cd7b9f4e70568b97e96d775d468f910ecf6a9fcd2d3b814c9f828f2b56"
+    },
+    "started": "2026-11-27T22:28:37Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f03": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f03",
+     "stage": "baseline",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": null,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "bf231e9b66e3f8355fa7457b2c6febd6d064ea08f878fe279b430f9b912a0a82",
+    "outputs_sha256": {
+     "f03.baseline.png": "218d0b5aecfd567a8586cee630532f3df28e07e9b439a63ce127ca4f3ebedc23"
+    },
+    "started": "2026-11-27T22:14:24Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f03",
+     "stage": "candidate",
+     "target_sha256": "4ebb59b2e284a06626ff74ba249efd0171ec3b33b212912f7973cf5bb3d38447",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": 109102,
+     "fence_hash": "e10a2bc396770332ccdda746e241e5e36a1529689048ed85c38ef8a38a4baad3"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "a854b33b09189df3af32086af405d64e21c5255a5488c15b949995611c74c9cc",
+    "outputs_sha256": {
+     "f03.candidate.png": "55d56212a8049aff31bcc92b8934ccbbc3fca115fa42ea4c3851cf7bdd067f7d",
+     "f03.candidate_raw.png": "acf2bcf93e9fcce3935f91dc52ade1490fffe8e88f15528df72878837021279b"
+    },
+    "started": "2026-11-27T22:40:44Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f04": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f04",
+     "stage": "baseline",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": null,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "8754fab6b0d3938b473356e7141ef8707f536c7cc77c31b813f7ecd6d740c37b",
+    "outputs_sha256": {
+     "f04.baseline.png": "4ed2736d3cc6d484b33e45e65e64345a975777efbcc8521e37d829fcf7d13248"
+    },
+    "started": "2026-11-27T22:14:32Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f04",
+     "stage": "candidate",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": 109103,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "e0f6487479be244c1cf4fd1c76e4a6aa948f769c72ad5589d137d4015f2066ff",
+    "outputs_sha256": {
+     "f04.candidate.png": "647e3e0846fe7e1437c383bf67f4533bacb4eaca1df5159231361f25a7ced9b4",
+     "f04.candidate_raw.png": "45b2ff8bdcb0709d409b44d0267725b7a0236477f6ce49fec1cd56b586861084"
+    },
+    "started": "2026-11-27T22:52:44Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f05": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f05",
+     "stage": "baseline",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": null,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "6f102d53971e07796448b0e2e05f025b5cd0c8aff9a8950098cb04d53817d49b",
+    "outputs_sha256": {
+     "f05.baseline.png": "706d5a53755146763caf7934d6c51778a9adf2b740547e2a3a9741c4c823b0df"
+    },
+    "started": "2026-11-27T22:14:38Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f05",
+     "stage": "candidate",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": 109104,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "7b7df75eb75892266009145853c57851efe3b587a84513bcf683431a2d1a8d4c",
+    "outputs_sha256": {
+     "f05.candidate.png": "b23cfd9638a5c81fbcf90434e556463510b967eea7f73b21456ec7eebb56ad98",
+     "f05.candidate_raw.png": "d14eb64cefe05dbc8e53d8ba901685e8d1b3cec63d40fa5f1822b0de894c10db"
+    },
+    "started": "2026-11-27T23:04:43Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f06": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f06",
+     "stage": "baseline",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": null,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "5b8e739360be4ff08ec6cd02025b22243449eea048c29cff868df446431981f3",
+    "outputs_sha256": {
+     "f06.baseline.png": "52248961d671491a324d8163d8836721b44b31ca4bac1bf49ae521d413107f7c"
+    },
+    "started": "2026-11-27T22:14:45Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f06",
+     "stage": "candidate",
+     "target_sha256": "b71b0c6853e280758d7c5612991414ff2e63811972df8eb0bbe49ade46c81885",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": 109105,
+     "fence_hash": "86f8d4f78ea91854ab2e7a3bdf1e7e93206e4260fe9f89ecf476b59342b9eb29"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "d5aa0d4aa1190ef2743af01fcabbc54fa8370e9f77d8b92d297794ee73466a9c",
+    "outputs_sha256": {
+     "f06.candidate.png": "7aef7d0c4a527ed932f90f094df94fa981593a06ec41aa80f9c804fb509b4d3a",
+     "f06.candidate_raw.png": "a31f890489f7423da3f43f16c2306e86d91fdb68f3692c93ebbd750090cc871e"
+    },
+    "started": "2026-11-27T23:16:55Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f07": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f07",
+     "stage": "baseline",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": null,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "0bf28dd130e7d86bf5652b4f9ebf09aa0604ab31052a59598159188fa5338ff9",
+    "outputs_sha256": {
+     "f07.baseline.png": "578f3f23524d84a2ca761b0b4fb61c2197e678e3072ec8bd361d15d74554b2ff"
+    },
+    "started": "2026-11-27T22:14:51Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f07",
+     "stage": "candidate",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": 109106,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "bae4e151d8e0c77be8878ac1c18bcc4df77e17a25cae3abdde8dd71024ea0b06",
+    "outputs_sha256": {
+     "f07.candidate.png": "a1297d739e4faf6ad3f4e0ef173aa2174722d85503fd30b36f3c6946d415299c",
+     "f07.candidate_raw.png": "0860fefb798c4d97359bb7cc866f7c2fd4fa77c1613593928cb83933e5870be3"
+    },
+    "started": "2026-11-27T23:28:53Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f08": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f08",
+     "stage": "baseline",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": null,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "8b74903a24e9c93c45dc9957b50dfb1ec2a9685de8dfe5fc5ceb2f91cd8136f5",
+    "outputs_sha256": {
+     "f08.baseline.png": "e19c22f52110d3585ba09f5c935decce166c0cd17fde744b41830cafc885d7ba"
+    },
+    "started": "2026-11-27T22:14:58Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f08",
+     "stage": "candidate",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": 109107,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "e35e6fa0385f4e96ddb274c551db84ef64dcbe0c8e32a03fa900894e820d5b49",
+    "outputs_sha256": {
+     "f08.candidate.png": "0f24793981ad848a7229cd63bf3f2e79b366ccb891ec76e4d891423819511ad1",
+     "f08.candidate_raw.png": "789f508a63eb4cec37470f8ef91b9ea9d82099c1e62078786ddf4afa0a3254c6"
+    },
+    "started": "2026-11-27T23:40:38Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f09": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f09",
+     "stage": "baseline",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": null,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "920c2410c15d4f273f25e7491679e955c6f541fe2276d76d0ebaf5d03e3d4ee2",
+    "outputs_sha256": {
+     "f09.baseline.png": "69ff9e1700bebd99c7e402f25371cc211f080c8de0ef983baedafc6ab0b8fb7f"
+    },
+    "started": "2026-11-27T22:15:05Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f09",
+     "stage": "candidate",
+     "target_sha256": "13100237514b82d7929195b0d0cf32dbe8e6e99e9f9e8cec20b089a7fa93d1b1",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": 109108,
+     "fence_hash": "fdda2961a254cb3c220e05344649a92bcecc17022e6cfd83c29b4b65cafb022b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "947cd79776c1065aece9d02c0bc54cf102373ad80b9972856a829377e809bf48",
+    "outputs_sha256": {
+     "f09.candidate.png": "fb9d1068c1903a8af8fc3af06a30e72333ad551588b605bcc8b4e5e421eb1e68",
+     "f09.candidate_raw.png": "5bcd99fba1c0d6f6f2b568a4c564cf1286761903b8e6fad9625a7e8ff2da1bd4"
+    },
+    "started": "2026-11-27T23:52:29Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f10": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f10",
+     "stage": "baseline",
+     "target_sha256": "63a2d2298d5317402223af8d8fabb827c2f7990698f211594f92a7ebb1489b76",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": null,
+     "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "9bf752e8e4a294c30f227cee6e76bbf3f4aff315126c4faf0760626e77ee5b72",
+    "outputs_sha256": {
+     "f10.baseline.png": "085d36200d0913179a4ba9af94ba1dbda90538411af6f2abeffd61128b983efb"
+    },
+    "started": "2026-11-27T22:15:13Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f10",
+     "stage": "candidate",
+     "target_sha256": "63a2d2298d5317402223af8d8fabb827c2f7990698f211594f92a7ebb1489b76",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": 109109,
+     "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "e8a150c465db40e876420b5a54b6d9b5c2e21d001638a221cc9d1d68488894e0",
+    "outputs_sha256": {
+     "f10.candidate.png": "e7aacf368b1ddfa083b52ec85f5b1e632bc6bb4717e5028d4d5d3a1e00b5c2ac",
+     "f10.candidate_raw.png": "a005b5023b609952382016595d5f1d22974c7fcd91b16c43c178e78e81e3a20a"
+    },
+    "started": "2026-11-28T00:04:21Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f11": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f11",
+     "stage": "baseline",
+     "target_sha256": "63a2d2298d5317402223af8d8fabb827c2f7990698f211594f92a7ebb1489b76",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": null,
+     "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "91bd145b9d67cc6fae1b8f257ffc471575b1214bb645511bea9c52a6770951c5",
+    "outputs_sha256": {
+     "f11.baseline.png": "7619020c1e1f5ae3804fa7674d8dafbe18f508323685d3d9626e236e2f84bf47"
+    },
+    "started": "2026-11-27T22:15:19Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f11",
+     "stage": "candidate",
+     "target_sha256": "63a2d2298d5317402223af8d8fabb827c2f7990698f211594f92a7ebb1489b76",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": 109110,
+     "fence_hash": "b500b61e8ff4347eda5043e6eba852fde848bdbf4c2147e19d7b282d9ea00ce4"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "096e13add9cf276996bcf09052c1b5e3df79b6d561409b3774495dd8b28d2bb9",
+    "outputs_sha256": {
+     "f11.candidate.png": "0039711388fc5cdbef77e517e2978e1169d0243a2aeefc52e7c87399808fb47d",
+     "f11.candidate_raw.png": "48fc418c4902ecf11fbc96e8a7486a04824c14be59c6c84dcdee61e4007ca60c"
+    },
+    "started": "2026-11-28T00:16:04Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f12": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f12",
+     "stage": "baseline",
+     "target_sha256": "535a7fbfb27945e849209a57f475b8d8135e04c6f741214fa50fb682d335f39c",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": null,
+     "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "db660c536aef1e2fe72884f988a35122736ed2930a3fbdd12cea0e4990c995a4",
+    "outputs_sha256": {
+     "f12.baseline.png": "8e4904431818b897557c3dd1033203706ec20a9a33e888ebe8e413a51d7ca253"
+    },
+    "started": "2026-11-27T22:15:26Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f12",
+     "stage": "candidate",
+     "target_sha256": "535a7fbfb27945e849209a57f475b8d8135e04c6f741214fa50fb682d335f39c",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": 109111,
+     "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "657712c92c9027c973e2e626881c503f51563dc5602f2aa4410f76e8dd164adf",
+    "outputs_sha256": {
+     "f12.candidate.png": "8191393c267c5abeb3ff89ce66bee8c89fa901f100dd35b1291dd9efbec93443",
+     "f12.candidate_raw.png": "7d1f68a8427f89a1a20dd0f9536738a02e8a9dc62eab5bfafff474a0599efb7e"
+    },
+    "started": "2026-11-28T02:26:07Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f13": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f13",
+     "stage": "baseline",
+     "target_sha256": "535a7fbfb27945e849209a57f475b8d8135e04c6f741214fa50fb682d335f39c",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": null,
+     "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "5243aedddd44f82f3ba93885d6f78f35c54cf6fef185fec184264f49245dc6b3",
+    "outputs_sha256": {
+     "f13.baseline.png": "16a279ea2bba4cfca0eb6007305d0e19cd11d7b1e62e87dd4e5704a3ebd157a5"
+    },
+    "started": "2026-11-27T22:15:31Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f13",
+     "stage": "candidate",
+     "target_sha256": "535a7fbfb27945e849209a57f475b8d8135e04c6f741214fa50fb682d335f39c",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": 109112,
+     "fence_hash": "3f93b379da4293b3a72774647d0b47a3d03508b3163807f72706e6f1164cd774"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "05dbd10d389e4527c43ee11a938b7b6d0bfb031c81585c416770b869df9e5f8d",
+    "outputs_sha256": {
+     "f13.candidate.png": "e25a7eefa9ccc8ab5c90f46d155f1430931da7926e28aabe946ba865ffd7077c",
+     "f13.candidate_raw.png": "f5519e4d117596426e38cc9fdf60c79d946146bedeff58694334ec16e21bccb2"
+    },
+    "started": "2026-11-28T02:40:30Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f14": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f14",
+     "stage": "baseline",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": null,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "2bcc9cbfd57d6631a1b6f07b310e52ca99bf3319ab15bbdbb71d258a040a42f5",
+    "outputs_sha256": {
+     "f14.baseline.png": "cae48be361ea08d418dcd2a5328ab86f198d9dca37d3b9c47d14a8e00c56cf1b"
+    },
+    "started": "2026-11-27T22:15:37Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f14",
+     "stage": "candidate",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": 109113,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "8e03811f6c62c351436527ce16dc71239411b9ba4f4d0b5e04182355de53c267",
+    "outputs_sha256": {
+     "f14.candidate.png": "1b4f195575c77171207cd175d7fc7fb9828ddfc06a7337f7951ec2b3e5643e6e",
+     "f14.candidate_raw.png": "25268cd17eb087072ffc1f42f7f12f6a8ae8125e28d06b3e7173b0234c43f7bc"
+    },
+    "started": "2026-11-28T02:52:12Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f15": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f15",
+     "stage": "baseline",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": null,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "d40fbaf7ca831c151abed9dad1d3dcbe25a14569268ba2b586697938da676869",
+    "outputs_sha256": {
+     "f15.baseline.png": "1a2fa99ef00be12d5437c1bdf9555f8c63c4360ebb02adeac6f1f6decbbd94dd"
+    },
+    "started": "2026-11-27T22:15:43Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f15",
+     "stage": "candidate",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "f6d321365ac3dc04e74d5aaa5d8fc81ffab624d60ac5a376393f4fb91b27e792",
+     "seed": 109114,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "ae06f5bda66bc3cb3295ba86ee3e841abb743664ac8568e4e8d73de890c22828",
+    "outputs_sha256": {
+     "f15.candidate.png": "242a0967aa9a82d9da0f8b7ff0cabfe9bf99ea9e9c5d56cb81dc8d425f65c210",
+     "f15.candidate_raw.png": "ad62bdce9ca9330661b62b8a4f1784c581c0de0a7e01cc53985e11562651dad7"
+    },
+    "started": "2026-11-28T03:03:50Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f16": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f16",
+     "stage": "baseline",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": null,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "165a48e67c7f10114bee08e6101c294c085afa98ca0601a0db7247c7eb3eecf3",
+    "outputs_sha256": {
+     "f16.baseline.png": "16824fc33f9cda45965702453ce5862d86b0db93869335ed2e8c0ebfe233909e"
+    },
+    "started": "2026-11-27T22:15:48Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f16",
+     "stage": "candidate",
+     "target_sha256": "63925982c0478cc66668322fb7b365906abc989552b8401c395c54e3a2ad4fce",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": 109115,
+     "fence_hash": "0840413745e6f557377f5ec547d14dfdbd66d4c490485346a4dafb1185be5192"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "54bb908764069ef572b4ac88a03a1e94fc16aebdb96f7552636b69a7f9a92d32",
+    "outputs_sha256": {
+     "f16.candidate.png": "61753c4444b4daad6b9793b92af8507b77e5615554eb629956700d1bf607a021",
+     "f16.candidate_raw.png": "0367812cec14b2aa895d01f384a0dbcc3c177fbabda935f0ca684328b756f361"
+    },
+    "started": "2026-11-28T03:15:21Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f17": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f17",
+     "stage": "baseline",
+     "target_sha256": "22e1fe49dfc103690a4a9e8416fae565825be9fa22ca4dd58fe3c642d11e6290",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": null,
+     "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "a150c14eb2cee53130b94e7b28ec783a0b854838c77716184ab832c758872775",
+    "outputs_sha256": {
+     "f17.baseline.png": "e50baee23a278b887948d388965ca039a74081dee56766efc2dd5fbe78519bfc"
+    },
+    "started": "2026-11-27T22:15:55Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f17",
+     "stage": "candidate",
+     "target_sha256": "22e1fe49dfc103690a4a9e8416fae565825be9fa22ca4dd58fe3c642d11e6290",
+     "reference_sha256": "96acaf7f2c3e7f3b77b9ba5ce6ae4db356046f7207e6cc2edbfa4e3d3b8576f2",
+     "seed": 109116,
+     "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "adcd913d553feb2c9c435982df9ddc0c65f6792b775a443053bfbd002b445883",
+    "outputs_sha256": {
+     "f17.candidate.png": "ac389ffe7e96b1b08c9771a0fd3416c874eb1add6ad8c6384b9fdba17b6a7389",
+     "f17.candidate_raw.png": "f149be0192920384d54af5652c1357f7d1d094f3401eb34fbd730f5176e0c087"
+    },
+    "started": "2026-11-28T03:26:58Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f18": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f18",
+     "stage": "baseline",
+     "target_sha256": "22e1fe49dfc103690a4a9e8416fae565825be9fa22ca4dd58fe3c642d11e6290",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": null,
+     "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "4a24004cc4e1989572693276570841d41b2264d92fe02d3f24eb0fc911e11e34",
+    "outputs_sha256": {
+     "f18.baseline.png": "c77b4c15aa1eabd94c9d47694ed2350c49f9022d52c6e303bb228b3926346d73"
+    },
+    "started": "2026-11-27T22:16:00Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f18",
+     "stage": "candidate",
+     "target_sha256": "22e1fe49dfc103690a4a9e8416fae565825be9fa22ca4dd58fe3c642d11e6290",
+     "reference_sha256": "4a05449d066e36b305ce323f53421e6e602066db755f4a7e0a781055a51a3cf9",
+     "seed": 109117,
+     "fence_hash": "d89dedbffa7d87844de436ebdef2b58536906d539b74745e902acc1a24d5933b"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "77db71bab1ad6dcdc14af24c2a560be60278a5ae5b8166975421f2c488987de1",
+    "outputs_sha256": {
+     "f18.candidate.png": "cac22a71d1028764a01bd91bf74c06a6753a88ba3d8ecb0aec521f3ccd823cae",
+     "f18.candidate_raw.png": "c43a1ec8bd55fce758f41e7c4c0b8a547df6c6615e7cf0fc903fa9b1d0c5ab5b"
+    },
+    "started": "2026-11-28T03:38:39Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f19": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f19",
+     "stage": "baseline",
+     "target_sha256": "5218cc617bab84603d7078e443f472cf7be185e1dce147c9856e6d9ea0683ee9",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": null,
+     "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "7167a0082b1c14539120b784562485bc4388646084c3d03c9cc1c5d5de2e01e2",
+    "outputs_sha256": {
+     "f19.baseline.png": "685b83e92b49754d276dd60b9ce001a209ebcf6977281b323a6b92a909922e54"
+    },
+    "started": "2026-11-27T22:16:07Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f19",
+     "stage": "candidate",
+     "target_sha256": "5218cc617bab84603d7078e443f472cf7be185e1dce147c9856e6d9ea0683ee9",
+     "reference_sha256": "86096e7b9728ddf582404a010af817f4e774aabc4967bcf198caf8f832432e6a",
+     "seed": 109118,
+     "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "bd2b1288468ab67fa757af66fb310347764b2cab790b613308e837bbaa9f1b9d",
+    "outputs_sha256": {
+     "f19.candidate.png": "047b0aac6b6402b3c254468c96fdb5453eaf8c82574d420a2b0b36f4bd4768e2",
+     "f19.candidate_raw.png": "eff8e5679889734e6852493298cf76dd51025cf60aef7e9c91e0097213e17785"
+    },
+    "started": "2026-11-28T03:50:24Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  },
+  "f20": {
+   "baseline": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f20",
+     "stage": "baseline",
+     "target_sha256": "5218cc617bab84603d7078e443f472cf7be185e1dce147c9856e6d9ea0683ee9",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": null,
+     "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "d550d565aeef4fa1818fb7bb070d99f9ba48753cff2a0162cbffbe809f598319",
+    "outputs_sha256": {
+     "f20.baseline.png": "aac43b1bf28c53068155853ca9ab5391cf438d431708006eb53a606b81e72857"
+    },
+    "started": "2026-11-27T22:16:13Z"
+   },
+   "candidate": {
+    "status": "ok",
+    "binding": {
+     "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+     "pair_id": "f20",
+     "stage": "candidate",
+     "target_sha256": "5218cc617bab84603d7078e443f472cf7be185e1dce147c9856e6d9ea0683ee9",
+     "reference_sha256": "b6019f70f34bd51f9e10042eb8d0203cbdd02c0b04e33ce4b395260a67b0688c",
+     "seed": 109119,
+     "fence_hash": "cc9356c62815b385af3fa93bff37f527898d775bccd5b0deaec4cb1fd83ac55d"
+    },
+    "binding_recorded": "backfilled on 2026-11-28 after review: these checkpoints were written before binding existed. Fixture hashes were checked against cohort.json when the run started and again now; the seed was taken from the frozen cohort and not echoed into the checkpoint; output hashes are of the files retained in the work directory, not hashes recorded at write time",
+    "checkpoint_sha256": "f24f6b865911d9835c958133add25dc69034088efa7d8cc1bbd13a093734cd4d",
+    "outputs_sha256": {
+     "f20.candidate.png": "53ef966303a033fb511134b8c33a65b6d964135b19fd4acfe0cbad8036ce73b3",
+     "f20.candidate_raw.png": "035a63e84769cebcfd093a70495c1f5230cbf7e9150b9a8464ea0c9fc5e2a78c"
+    },
+    "started": "2026-11-28T04:02:06Z",
+    "components_sha256": {
+     "klein-Q4_0.gguf": "d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4",
+     "qwen3-4b-Q4_K_M.gguf": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a",
+     "flux2_vae.safetensors": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04",
+     "loras/bfs_head_v1.safetensors": "77aabcd6144612dd4873080b99283dd9a27977712548bee161894f62c91ff09c"
+    }
+   }
+  }
+ }
+}
