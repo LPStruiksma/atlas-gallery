@@ -1,5 +1,8 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.featureguest.GuestCandidate
+import nl.atlas.gallery.featureguest.GuestCopy
+import nl.atlas.gallery.featureguest.GuestEntry
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -161,6 +164,8 @@ fun GalleryViewer(
     photoPeople: ViewerPhotoPeople? = null,
     // IDS-11 (#478): "Swap person" under AI Edit in the ⋮ menu; null hides it.
     swapPerson: ViewerSwapPerson? = null,
+    // GUEST-1 (#589): "Guest view" in the ⋮ menu, still photos only; null hides it.
+    onGuestView: ((MediaRecord) -> Unit)? = null,
     // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
@@ -175,7 +180,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onBack)
+            favouriteOverrides, photoPeople, swapPerson, onGuestView, access, motionProbe, onBack)
     }
 }
 
@@ -195,6 +200,7 @@ private fun GalleryViewerSnapshot(
     favouriteOverrides: MutableMap<String, Boolean>,
     photoPeople: ViewerPhotoPeople?,
     swapPerson: ViewerSwapPerson?,
+    onGuestView: ((MediaRecord) -> Unit)?,
     access: ViewerAccess,
     motionProbe: ViewerFilmstripMotionProbe?,
     onBack: () -> Unit
@@ -947,15 +953,18 @@ private fun GalleryViewerSnapshot(
                     Icon(Icons.Outlined.ImageSearch, "Find similar", tint = Color.White)
                 }
                 // AI Edit is inside the viewer overflow, never another permanent pencil.
-                if (onAiEdit != null && !current.isVideo &&
-                    PhotoEditorHandoff.eligible(current)) Box {
+                val aiEditOffered = onAiEdit != null && !current.isVideo &&
+                    PhotoEditorHandoff.eligible(current)
+                val guestOffered = onGuestView != null && GuestEntry.offeredInViewer(
+                    GuestCandidate(current.id, current.uri, current.isVideo))
+                if (aiEditOffered || guestOffered) Box {
                     IconButton(onClick = { aiEditMenuOpen = true },
                         modifier = Modifier.testTag("atlas-viewer-more")) {
                         Icon(Icons.Filled.MoreVert, "More photo actions", tint = Color.White)
                     }
                     DropdownMenu(expanded = aiEditMenuOpen,
                         onDismissRequest = { aiEditMenuOpen = false }) {
-                        DropdownMenuItem(
+                        if (aiEditOffered && onAiEdit != null) DropdownMenuItem(
                             text = { Text("AI Edit") },
                             modifier = Modifier.testTag("atlas-viewer-ai-edit"),
                             onClick = { aiEditMenuOpen = false; onAiEdit(current) })
@@ -966,10 +975,14 @@ private fun GalleryViewerSnapshot(
                             value = false
                             value = swapPort?.eligible?.invoke(current) == true
                         }
-                        if (swapPort != null && swapOk) DropdownMenuItem(
+                        if (aiEditOffered && swapPort != null && swapOk) DropdownMenuItem(
                             text = { Text("Swap person") },
                             modifier = Modifier.testTag("atlas-viewer-swap-person"),
                             onClick = { aiEditMenuOpen = false; swapPort.open(current) })
+                        if (guestOffered && onGuestView != null) DropdownMenuItem(
+                            text = { Text(GuestCopy.ENTRY) },
+                            modifier = Modifier.testTag("atlas-viewer-guest-view"),
+                            onClick = { aiEditMenuOpen = false; onGuestView(current) })
                     }
                 }
                 if (access.details) IconButton(

@@ -1,0 +1,15 @@
+# GUEST-1 (#589): guest view. GuestViewJourneyTest, 1080x2340, generated media.
+# Guest frames are FLAG_SECURE: "c-*" are PixelCopy captures of the app's own
+# window; "os-screencap" is what `screencap` (shell) returned for the same frame.
+guest-589-light-a-entry
+guest-589-dark-a-entry
+guest-589-light-c-first
+guest-589-dark-c-first
+guest-589-light-c-last
+guest-589-dark-c-last
+guest-589-light-c-landscape
+guest-589-dark-c-landscape
+guest-589-light-os-screencap
+guest-589-dark-os-screencap
+guest-589-light-b-viewer-entry-font200
+guest-589-light-c-viewer-font200
