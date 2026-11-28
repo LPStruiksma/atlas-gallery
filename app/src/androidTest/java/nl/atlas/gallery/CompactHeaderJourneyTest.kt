@@ -282,6 +282,7 @@ internal class SyntheticHeaderFixtures(
     private val sizes: List<Pair<Int, Int>> = List(6) { 120 to 90 },
     /** Folder per 1-based image step; more folders give more album cards (#506). */
     private val folderOf: (Int) -> String = { "ATLAS-Header-Fixture" },
+    private val takenAtOf: ((Int) -> Long)? = null,
     private val beforeLaunch: (android.content.Context) -> Unit = {}
 ) : TestRule {
     private val inserted = mutableListOf<Uri>()
@@ -310,7 +311,7 @@ internal class SyntheticHeaderFixtures(
         val now = System.currentTimeMillis()
         sizes.forEachIndexed { i, (width, height) ->
             val step = i + 1
-            val taken = now - step * 86_400_000L
+            val taken = takenAtOf?.invoke(step) ?: (now - step * 86_400_000L)
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_HEADER_FIXTURE_$step.png")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")

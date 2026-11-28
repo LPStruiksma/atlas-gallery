@@ -40,6 +40,21 @@ class ViewerScrubOverlayTest {
         assertEquals(true, viewerMayStartDownExit(120f, 40f, 40L, false, 12f))
     }
 
+    @Test fun flow3DownDragWaitsForIntentBeforeOwningThePhoto() {
+        assertFalse(viewerMayTrackVerticalGesture(90f, 0f, 12f, false, false))
+        assertTrue(viewerMayTrackVerticalGesture(90f, 0f, 12f, false, true))
+        assertTrue(viewerMayTrackVerticalGesture(-90f, 0f, 12f, false, false))
+        assertTrue(viewerMayTrackVerticalGesture(90f, 0f, 12f, true, false))
+        assertFalse(viewerMayTrackVerticalGesture(90f, 100f, 12f, false, false))
+    }
+
+    @Test fun flow3ReversedOwnedDownDragCannotOpenDetails() {
+        assertFalse(viewerDownDismissCommits(-200f, -1800f, 150f, 1200f, 1f, true))
+        assertFalse(viewerDownDismissCommits(30f, 0f, 150f, 1200f, 1f, true))
+        assertFalse(viewerDownDismissCommits(200f, 1800f, 150f, 1200f, 1f, false))
+        assertTrue(viewerDownDismissCommits(200f, 0f, 150f, 1200f, 1f, true))
+    }
+
     @Test fun downExitClockIsMeasuredFromPointerDownNotDragRecognition() {
         // With down at t=100 and slop crossed at t=119, a move at t=125
         // already qualifies. Starting the clock at slop crossing would fail.

@@ -74,6 +74,65 @@ class ViewerMotionMathTest {
         }
     }
 
+    @Test fun belowFitPinchOwnsOnlyAfterFitAndContinuesThroughReversal() {
+        assertFalse(viewerMayOwnPinchExit(false, true, 1.2f, .8f))
+        assertFalse(viewerMayOwnPinchExit(false, false, 1f, .8f))
+        assertFalse(viewerMayOwnPinchExit(false, true, 1f, 1.1f))
+        assertFalse(viewerMayOwnPinchExit(false, true, 1f, .999f))
+        assertTrue(viewerMayOwnPinchExit(false, true, 1f, .97f))
+        assertTrue(viewerMayOwnPinchExit(true, true, 1f, 1.2f))
+        assertFalse(viewerMayOwnPinchExit(true, false, 1f, .8f))
+        val down = viewerPinchExitFrame(ViewerPinchExitPose(), .85f, 750f, 300f, 1000, 1000)
+        assertEquals(.85f, down.scale, .001f)
+        assertEquals(750f, 500f + 250f * down.scale + down.x, .001f)
+        assertEquals(300f, 500f - 200f * down.scale + down.y, .001f)
+        assertTrue(viewerPinchExitCommits(down, true))
+        assertFalse(viewerPinchExitCommits(down, false))
+        val reverse = viewerPinchExitFrame(down, 1.1f, 750f, 300f, 1000, 1000)
+        assertFalse(viewerPinchExitCommits(reverse, true))
+        assertEquals(ViewerPinchExitPose(),
+            viewerPinchExitFrame(reverse, 2f, 750f, 300f, 1000, 1000))
+        assertEquals(down, viewerPinchExitFrame(down, Float.NaN, 0f, 0f, 1000, 1000))
+    }
+
+    @Test fun pinchExitTracksMovingCentroidWithoutReanchoring() {
+        val start = viewerPinchExitFrame(ViewerPinchExitPose(), .8f, 750f, 300f, 1000, 1000)
+        val moved = viewerPinchExitFrame(start, 1f, 750f, 300f, 1000, 1000, 30f, 40f)
+        assertEquals(start.scale, moved.scale, .001f)
+        assertEquals(start.x + 30f, moved.x, .001f)
+        assertEquals(start.y + 40f, moved.y, .001f)
+        val next = viewerPinchExitFrame(moved, .9f, 780f, 340f, 1000, 1000)
+        assertEquals(780f, 500f + 250f * next.scale + next.x, .001f)
+        assertEquals(340f, 500f - 200f * next.scale + next.y, .001f)
+        assertEquals(moved, viewerPinchExitFrame(moved, .8f, 780f, 340f, 1000, 1000, Float.NaN))
+    }
+
+    @Test fun freshDownDragRegrabsTheReturningPoseWithoutJumping() {
+        val base = viewerDownExitRegrabBase(120f, true, false, 1f)
+        assertEquals(120f, base, .001f)
+        assertEquals(viewerDownExitPose(120f, 1000f),
+            viewerDownExitPose(viewerDownExitTravel(base, 0f), 1000f))
+        assertEquals(80f, viewerDownExitTravel(base, -40f), .001f)
+        assertEquals(0f, viewerDownExitTravel(base, -180f), .001f)
+        assertEquals(160f, viewerDownExitTravel(base, 40f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, false, false, 1f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, true, true, 1f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, true, false, 2f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(Float.NaN, true, false, 1f), .001f)
+        // A touch without new downward intent cannot commit a previously cancelled drag.
+        assertFalse(viewerDownDismissCommits(base, 0f, 56f, 1100f, 1f,
+            viewerMayStartDownExit(0f, 0f, 100L, false, 8f)))
+    }
+
+    @Test fun dragToPinchStartsAtTheDrawnDragPose() {
+        val drag = viewerDownExitPose(260f, 1000f)
+        assertEquals(.912f, drag.scale, .001f)
+        assertEquals(260f, drag.y, .001f)
+        assertEquals(drag, viewerPinchExitFrame(drag, 1f, 500f, 500f, 1000, 1000))
+        assertEquals(ViewerPinchExitPose(), viewerDownExitPose(-20f, 1000f))
+        assertEquals(ViewerPinchExitPose(), viewerDownExitPose(Float.NaN, 1000f))
+    }
+
     @Test fun ordinaryPagerSwipeIsNeverClaimedByPhotoAtRest() {
         assertFalse(viewerMayHandleTransform(0, 1f))
         assertFalse(viewerMayHandleTransform(1, 1f))
@@ -251,6 +310,17 @@ class ViewerMotionMathTest {
         assertEquals(pose.translationY, next.translationY, .01f)
     }
 
+    @Test fun flow3ReturnMotionUsesAtlas200msSineContract() {
+        assertEquals(200, AtlasMotion.SHARED_ELEMENT_MS)
+        val samples = (0..200 step 10).map {
+            AtlasMotion.SineInOut70.transform(it / 200f)
+        }
+        assertEquals(0f, samples.first(), .001f)
+        assertEquals(1f, samples.last(), .001f)
+        assertTrue(samples.zipWithNext().all { (a, b) -> a <= b + 1e-4f })
+        assertTrue("return motion must have visible easing", samples[5] < .5f)
+    }
+
     @Test fun doubleTapZoomAnimatesFor160msWithSineInOut() {
         assertEquals(160, AtlasMotion.DOUBLE_TAP_ZOOM_MS)
         assertEquals(0f, eased(0), .001f)
@@ -348,6 +418,131 @@ class ViewerMotionMathTest {
         assertEquals(to, viewerDoubleTapFrame(from, to, 700f, 1_000f, 0, 0, vw, vh, .5f))
         val nanTap = viewerDoubleTapFrame(from, to, Float.NaN, Float.NaN, vw, vh, vw, vh, .5f)
         assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
+    }
+
+    @Test fun singlePointerRegrabOnlyInheritsAnActiveEligiblePinchReturn() {
+        val returning = ViewerPinchExitPose(.84f, 20f, 40f)
+        assertTrue(viewerMayRegrabPinchExit(returning, true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, false, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, true, false, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, true, true, 1.2f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(), true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(Float.NaN), true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(.84f, Float.NaN), true, true, 1f))
+        // A lone pointer follows the inherited pose, but cannot earn contraction.
+        val moved = viewerPinchExitFrame(returning, 1f, 500f, 600f, 1000, 2000, 12f, -8f)
+        assertEquals(.84f, moved.scale, .001f)
+        assertEquals(32f, moved.x, .001f)
+        assertEquals(32f, moved.y, .001f)
+        assertFalse(viewerPinchExitCommits(moved, true, true, 1f))
+    }
+
+    @Test fun inheritedPinchNeedsFreshContractionAndReversalClearsIt() {
+        val inherited = ViewerPinchExitPose(.85f, 12f, 90f)
+        assertTrue(viewerPinchExitCommits(inherited, true))
+        assertFalse(viewerPinchExitCommits(inherited, true, true, 1f))
+        var fresh = viewerFreshPinchScale(1f, .99f)
+        assertFalse(viewerPinchExitCommits(inherited, true, true, fresh))
+        fresh = viewerFreshPinchScale(fresh, .98f)
+        assertTrue(viewerPinchExitCommits(inherited, true, true, fresh))
+        assertFalse(viewerPinchExitCommits(inherited, false, true, fresh))
+        fresh = viewerFreshPinchScale(fresh, 1.1f)
+        assertEquals(1f, fresh, .001f)
+        assertFalse(viewerPinchExitCommits(inherited, true, true, fresh))
+        assertEquals(1f, viewerFreshPinchScale(fresh, Float.NaN), 0f)
+    }
+
+    @Test fun committedGestureFrameUsesOrientedFitAndDrawnTransform() {
+        val landscape = sharedPhotoGestureFrame(1000, 2000, 2000, 1000,
+            ViewerPinchExitPose(.8f, 40f, 100f))!!
+        assertEquals(140f, landscape.left, .001f)
+        assertEquals(900f, landscape.top, .001f)
+        assertEquals(940f, landscape.right, .001f)
+        assertEquals(1300f, landscape.bottom, .001f)
+        val portrait = sharedPhotoGestureFrame(1000, 2000, 1000, 2000,
+            ViewerPinchExitPose(.8f, 0f, 200f))!!
+        assertEquals(100f, portrait.left, .001f)
+        assertEquals(400f, portrait.top, .001f)
+        assertEquals(900f, portrait.right, .001f)
+        assertEquals(2000f, portrait.bottom, .001f)
+        assertEquals(null, sharedPhotoGestureFrame(1000, 2000, 0, 0, ViewerPinchExitPose()))
+        assertEquals(null, sharedPhotoGestureFrame(1000, 2000, 2000, 1000,
+            ViewerPinchExitPose(Float.NaN)))
+    }
+
+    @Test fun ordinarySharedMotionFitsInsideOffsetViewportInsteadOfStretchingToIt() {
+        val window = androidx.compose.ui.geometry.Rect(20f, 100f, 1020f, 2100f)
+        val landscape = sharedPhotoFittedFrame(window, 2000, 1000)!!
+        assertEquals(androidx.compose.ui.geometry.Rect(20f, 850f, 1020f, 1350f), landscape)
+        val portrait = sharedPhotoFittedFrame(window, 1000, 4000)!!
+        assertEquals(androidx.compose.ui.geometry.Rect(270f, 100f, 770f, 2100f), portrait)
+        val tile = androidx.compose.ui.geometry.Rect(40f, 150f, 240f, 350f)
+        assertEquals(tile, sharedPhotoReturnCrop(landscape, tile, 0f)!!.frame)
+        assertEquals(landscape, sharedPhotoReturnCrop(landscape, tile, 1f)!!.frame)
+        val mid = sharedPhotoReturnCrop(landscape, tile, .5f)!!
+        assertEquals(mid.frame.width / (landscape.width * mid.crop.width),
+            mid.frame.height / (landscape.height * mid.crop.height), .001f)
+        assertNull(sharedPhotoFittedFrame(window, 0, 1000))
+        assertNull(sharedPhotoFittedFrame(androidx.compose.ui.geometry.Rect.Zero, 1000, 1000))
+        assertNull(sharedPhotoFittedFrame(
+            androidx.compose.ui.geometry.Rect(Float.NaN, 0f, 100f, 100f), 1000, 1000))
+    }
+
+    @Test fun offsetMixedAspectMotionHasOnlyOneRegisteredFrame() {
+        val window = androidx.compose.ui.geometry.Rect(20f, 100f, 1020f, 2100f)
+        val fitted = sharedPhotoFittedFrame(window, 2000, 1000)!!
+        val tile = androidx.compose.ui.geometry.Rect(40f, 150f, 240f, 350f)
+        for (p in listOf(.25f, .5f, .75f)) {
+            val moving = sharedPhotoReturnCrop(fitted, tile, p)!!
+            assertTrue(moving.frame != fitted && moving.frame != tile)
+            assertTrue(moving.frame.center != fitted.center && moving.frame.center != tile.center)
+            assertEquals(0f, sharedPhotoViewerImageAlpha(moving), 0f)
+        }
+        assertEquals(1f, sharedPhotoViewerImageAlpha(null), 0f)
+    }
+
+    @Test fun committedReturnInterpolatesCenteredCropWithoutStretch() {
+        val source = androidx.compose.ui.geometry.Rect(140f, 900f, 940f, 1300f)
+        val tile = androidx.compose.ui.geometry.Rect(390f, 880f, 690f, 1180f)
+        val start = sharedPhotoReturnCrop(source, tile, 1f)!!
+        assertEquals(source, start.frame)
+        assertEquals(1f, start.crop.width, .001f)
+        assertEquals(1f, start.crop.height, .001f)
+        val end = sharedPhotoReturnCrop(source, tile, 0f)!!
+        assertEquals(tile, end.frame)
+        assertEquals(.5f, end.crop.width, .001f)
+        assertEquals(1f, end.crop.height, .001f)
+        val mid = sharedPhotoReturnCrop(source, tile, .5f)!!
+        assertEquals(.75f, mid.crop.width, .001f)
+        assertEquals(525f, mid.frame.width, .001f)
+        assertEquals(350f, mid.frame.height, .001f)
+        assertEquals(mid.frame.width / (800f * mid.crop.width),
+            mid.frame.height / (400f * mid.crop.height), .001f)
+        assertEquals((source.center.x + tile.center.x) / 2f, mid.frame.center.x, .001f)
+        val portrait = androidx.compose.ui.geometry.Rect(0f, 0f, 400f, 800f)
+        val portraitMid = sharedPhotoReturnCrop(portrait, tile, .5f)!!
+        assertEquals(1f, portraitMid.crop.width, .001f)
+        assertEquals(.75f, portraitMid.crop.height, .001f)
+        val ratio = androidx.compose.ui.geometry.Rect(0f, 0f, 300f, 150f)
+        assertEquals(1f, sharedPhotoReturnCrop(source, ratio, .5f)!!.crop.width, .001f)
+        assertEquals(1f, sharedPhotoReturnCrop(source, ratio, .5f)!!.crop.height, .001f)
+        assertNull(sharedPhotoReturnCrop(source, androidx.compose.ui.geometry.Rect.Zero, .5f))
+        assertNull(sharedPhotoReturnCrop(source, tile, Float.NaN))
+    }
+
+    @Test fun dismissalBackdropTracksScaleReversalAndHandoffOnlyForAuthorizedTarget() {
+        val rest = ViewerPinchExitPose()
+        val drag = viewerDownExitPose(400f, 1000f)
+        val farther = viewerDownExitPose(700f, 1000f)
+        assertEquals(1f, viewerExitBackdropAlpha(true, rest, rest), 0f)
+        val mid = viewerExitBackdropAlpha(true, drag, rest)
+        assertTrue(mid > 0f && mid < 1f)
+        assertTrue(viewerExitBackdropAlpha(true, farther, rest) < mid)
+        assertEquals(mid, viewerExitBackdropAlpha(true, rest, drag), 0f)
+        assertEquals(mid, viewerExitBackdropAlpha(true, drag, drag), 0f)
+        assertEquals(1f, viewerExitBackdropAlpha(false, farther, rest), 0f)
+        assertEquals(1f, viewerExitBackdropAlpha(true, ViewerPinchExitPose(Float.NaN), rest), 0f)
+        assertEquals(0f, viewerExitBackdropAlpha(true, rest, ViewerPinchExitPose(.70f)), .001f)
     }
 
     @Test fun filmstripTapEasingIsMonotoneBoundedAndConstantTimeForLargeAlbums() {

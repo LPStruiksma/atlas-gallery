@@ -43,8 +43,8 @@ Lukas, 2026-11-10 00:39Z: "Samsung Gallery is relatively minimalistic, but in a 
 | Scrubbing: the big photo always equals the strip's centre item; low-res while moving, sharp when it stops; nothing jumps on release (`PERF:S1`, `VIEW:V11`) | Pager chased the strip page by page, fell several photos behind on a fast scrub, then one of the two jumped on release | While the strip moves, an overlay shows the centre item every frame from the strip's own cached thumbnail, sharpened to the 800 px preview after a 60 ms pause. On release the pager lands once on that same item and the overlay stays until it has. Pager never animates through intermediate pages |
 | Double tap ×2.31 around the tap point, pan bounded, edge hands off to pager (`VIEW:V20-21`) | Done in earlier units | Kept |
 | Swipe up shows the details panel (Lukas 2026-11-10: "sorely needed"; `VIEW:V26-V27`) | Only the ⓘ button | Swipe up on an unzoomed photo opens Details (viewer PR 2) |
-| Drag down to close (`VIEW:V22`) | missing | Swipe down on an unzoomed photo closes (viewer PR 2) |
-| Close returns the grid to the photo you ended on (`VIEW:V23`) | Done (`onExitSettledUri`) | Kept; shared-element return later |
+| Drag down to close (`VIEW:V22`) | missing | Swipe down on an unzoomed photo closes (viewer PR 2); FLOW-3 guards ownership until downward intent and cancels an owned drag on reversal. Authorized grid reveal is wired to gesture scale; runtime evidence remains pending |
+| Close returns the grid to the photo you ended on (`VIEW:V23`) | Done (`onExitSettledUri`) | FLOW-3 A prepares and measures the settled tile before exit; runtime proof pending |
 
 ## 2. Pictures grid and app shell (PR 2)
 - **Header:** Preserve the scroll-away Pictures heading (#506 folded in here), a compact search/overflow entry and no permanent duplicate header line. The title/chrome placement follows Quiet Frame; Samsung's large title and fixed compact bar are observations, not layout directives.
@@ -98,3 +98,23 @@ No blocking "Updating your allowed photos" screen (#505): keep showing the last 
 - [ ] 5 Selection and menus
 - [ ] 6 Video
 - [ ] 7 Access and loading (#505)
+
+FLOW-3 checkpoint A (#593): prepare the settled item's authorized grid and seek before the exit, measure its current tile rather than reusing the opening rectangle, and use a bounded no-target fallback. Checkpoint B1 adds focused below-fit pinch ownership and reversible focal scaling, with a provisional .90 fit commit threshold. This is implementation evidence only; B2a transfers the drawn down-drag pose into an eligible below-fit pinch and preserves centroid travel across pointer changes. B2b makes a cancelling down-drag interruptible at the current drawn pose and requires fresh downward intent before committing. B2c starts prepositioning the authorized grid after an idle settled URI, independently of commit; B2d makes the authorized, measured settled grid visible as drag/pinch scale decreases and restores backdrop/chrome opacity on reversal. B2e prevents release of an inherited pinch pose from closing without fresh net contraction; the provisional 2% gate needs runtime verification. B2f freezes an eligible returning pinch at its drawn pose on single-pointer regrab and prevents a competing parent drag; release without fresh two-pointer contraction cancels. B2g fades a non-grid return to the black viewer ground before restoring its existing route (no stale tile; immediate cut on revoked access or disabled motion). Runtime gesture arbitration and fallback appearance are not yet verified. B2h uses the gesture's decoded oriented fitted rectangle as the return overlay's starting frame and avoids a new black layer over a revealed grid; unknown geometry falls back to fade. B2i derives the committed gesture return clip from interpolated centered normalized crop and uniform scale. Preview alignment, one-copy handoff, Back/entry crop, paired runtime frames and timing comparison are still required.
+
+FLOW-3 C1 extends the existing light/dark S24+ synthetic journey with mixed-aspect fixtures, held/reversed/committed drag and measured Back after paging. Assertions and capture targets are not rendered proof; hosted execution and inspection, pinch/ratio/offscreen/fallback cases and paired timing remain owed.
+
+FLOW-3 C2 adds below-fit two-pointer held/reversed/committed return capture targets in the same light/dark journey. The reversal must keep the current photo; commit must start a measured overlay and return to the original tile. Actual pinch scale, pointer ownership and visual continuity still require hosted capture inspection.
+
+FLOW-3 C3 adds a dedicated light/dark dated-catalogue offscreen case: prove the synthetic target is absent initially, choose its filmstrip position, capture measured Back midpoint and assert that exact target tile is displayed after closing. Hosted runtime inspection remains pending; no missing-target fade or timing result is claimed.
+
+FLOW-3 C4 targets Back during an active entry animation, verifies no coexisting entry/exit semantics, closes to the opening tile, then reopens and returns to a different visible synthetic tile. Paired captures are targets only; actual pixel continuity and quick-close latency remain unmeasured.
+
+FLOW-3 C5 uses the measured click-origin handoff on original-proportion rows and adds light/dark non-square synthetic photo entry, measured Back midpoint and same-ratio-tile return capture targets. No runtime crop or timing result is claimed.
+
+FLOW-3 C6 applies the centered crop interpolation to ordinary entry and Back using oriented catalogue dimensions (no extra decode wait), retains the frozen decoded pose for gestures, and fades when fit geometry is unknown. The JVM geometry cases cover landscape, portrait, offset viewport and invalid dimensions. Metadata may differ from actual decoded geometry; paired runtime inspection and timing remain required.
+
+FLOW-3 C7 adds a synthetic real-host Stories journey to the paired light/dark suite. It targets the non-grid no-return-tile fade and verifies the same story moment after Back; capture targets only, not a measured grid timeout or a runtime result.
+
+FLOW-3 C8 registers every paired motion capture in the strict CI manifest and adds a real MainActivity grid-to-viewer timing probe using synthetic 4032×3024 PNG, first and repeated opens, PERF-3 callback stamps and Android Window frame-total p90. Hosted measurements, comparison and visual acceptance remain outstanding.
+
+FLOW-3 C9 extracts the existing committed grid measurement wait without changing its 1500 ms deadline, and adds coroutine JVM cases for timeout (short injected deadline), successful measurement and cancellation of obsolete preparation. The host still clears pending seeks and uses a null return origin on timeout; this is a focused wait regression, not a rendered real-grid timeout proof.

@@ -4,21 +4,24 @@ import android.content.Context
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -30,7 +33,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
+import nl.atlas.gallery.featuredesign.AtlasMotion
 
 /**
  * #23: a measured, one-shot photo entry. The value holds only a window rectangle
@@ -70,6 +79,48 @@ internal object SharedPhotoOrigins {
     fun clear() { pending = null }
 }
 
+/** Only the requested tile reports geometry; no catalogue-sized bounds cache. */
+internal class MeasuredViewerReturn(val request: PendingViewerReturn) {
+    var measured by mutableStateOf<SharedPhotoOrigin?>(null)
+        private set
+
+    fun offer(media: MediaRecord, epoch: Long, bounds: Rect, nowMillis: Long) {
+        if (media.uri != request.uri || epoch != request.accessEpoch) return
+        measured = if (!media.isVideo && bounds.width > 0f && bounds.height > 0f &&
+            listOf(bounds.left, bounds.top, bounds.right, bounds.bottom).all { it.isFinite() })
+            SharedPhotoOrigin(media, epoch, bounds, nowMillis) else null
+    }
+
+    fun clear() { measured = null }
+}
+
+/** Bound the committed measurement wait; no entry-origin substitution on timeout. */
+internal suspend fun awaitMeasuredViewerReturn(
+    candidates: Flow<SharedPhotoOrigin?>, timeoutMillis: Long = 1500L
+): SharedPhotoOrigin? =
+    withTimeoutOrNull(timeoutMillis) { candidates.filterNotNull().first() }
+
+internal val LocalMeasuredViewerReturn = compositionLocalOf<MeasuredViewerReturn?> { null }
+internal val LocalSharedPhotoViewerAlpha = compositionLocalOf { 1f }
+
+internal fun sharedPhotoViewerImageAlpha(frame: SharedPhotoCropFrame?): Float =
+    if (frame == null) 1f else 0f
+
+@Composable
+internal fun Modifier.measureViewerReturn(media: MediaRecord, epoch: Long): Modifier {
+    val target = LocalMeasuredViewerReturn.current ?: return this
+    if (target.request.uri != media.uri || target.request.accessEpoch != epoch || media.isVideo)
+        return this
+    DisposableEffect(target, media.uri, epoch) {
+        onDispose { target.clear() }
+    }
+    // Keep measuring and decoding the destination, but do not draw a second
+    // copy under the finger-tracked viewer or the committed moving photo.
+    return onGloballyPositioned { coordinates ->
+        target.offer(media, epoch, coordinates.boundsInWindow(), SystemClock.uptimeMillis())
+    }.graphicsLayer { alpha = 0f }
+}
+
 internal fun sharedPhotoAnimationDisabled(context: Context): Boolean =
     runCatching {
         Settings.Global.getFloat(context.contentResolver,
@@ -85,14 +136,72 @@ internal fun sharedPhotoRect(from: Rect, to: Rect, progress: Float): Rect {
         between(from.right, to.right), between(from.bottom, to.bottom))
 }
 
-private const val SHARED_PHOTO_MS = 210
+
+/** Local fitted-image rectangle at the instant a gesture commits. */
+internal fun sharedPhotoGestureFrame(viewportWidth: Int, viewportHeight: Int,
+    imageWidth: Int, imageHeight: Int, pose: ViewerPinchExitPose): Rect? {
+    if (viewportWidth <= 0 || viewportHeight <= 0 || imageWidth <= 0 || imageHeight <= 0 ||
+        !pose.scale.isFinite() || pose.scale <= 0f || pose.scale > 1f ||
+        !pose.x.isFinite() || !pose.y.isFinite()) return null
+    val fit = minOf(viewportWidth.toFloat() / imageWidth, viewportHeight.toFloat() / imageHeight)
+    val halfWidth = imageWidth * fit * pose.scale / 2f
+    val halfHeight = imageHeight * fit * pose.scale / 2f
+    val cx = viewportWidth / 2f + pose.x
+    val cy = viewportHeight / 2f + pose.y
+    return Rect(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
+}
+
+/** Fitted oriented image in window coordinates; missing dimensions must not invent a crop. */
+internal fun sharedPhotoFittedFrame(viewport: Rect, imageWidth: Int, imageHeight: Int): Rect? {
+    if (imageWidth <= 0 || imageHeight <= 0 ||
+        !listOf(viewport.left, viewport.top, viewport.right, viewport.bottom,
+            viewport.width, viewport.height).all { it.isFinite() } ||
+        viewport.width <= 0f || viewport.height <= 0f) return null
+    val fit = minOf(viewport.width / imageWidth, viewport.height / imageHeight)
+    val halfWidth = imageWidth * fit / 2f
+    val halfHeight = imageHeight * fit / 2f
+    val center = viewport.center
+    return Rect(center.x - halfWidth, center.y - halfHeight,
+        center.x + halfWidth, center.y + halfHeight)
+}
+
+/** The visible normalized crop and its uniformly scaled screen-space clip. */
+internal data class SharedPhotoCropFrame(val frame: Rect, val crop: Rect)
+
+/**
+ * Return from a full oriented fitted gesture frame to a centered cover tile.
+ * Progress is viewer=1, tile=0. Interpolate the normalized visible image
+ * window separately from the uniform scale; derive the screen clip from
+ * those two quantities, so a square or ratio tile never stretches the photo.
+ */
+internal fun sharedPhotoReturnCrop(source: Rect, tile: Rect, progress: Float): SharedPhotoCropFrame? {
+    if (!progress.isFinite() || listOf(source, tile).any { r ->
+            !listOf(r.left, r.top, r.right, r.bottom, r.width, r.height).all { it.isFinite() } ||
+                r.width <= 0f || r.height <= 0f
+        }) return null
+    val p = progress.coerceIn(0f, 1f)
+    val cover = maxOf(tile.width / source.width, tile.height / source.height)
+    if (!cover.isFinite() || cover <= 0f) return null
+    val cropWidth = (tile.width / (source.width * cover)).coerceIn(0f, 1f)
+    val cropHeight = (tile.height / (source.height * cover)).coerceIn(0f, 1f)
+    val tileCrop = Rect((1f - cropWidth) / 2f, (1f - cropHeight) / 2f,
+        (1f + cropWidth) / 2f, (1f + cropHeight) / 2f)
+    val crop = sharedPhotoRect(tileCrop, Rect(0f, 0f, 1f, 1f), p)
+    if (p == 0f) return SharedPhotoCropFrame(tile, crop)
+    if (p == 1f) return SharedPhotoCropFrame(source, crop)
+    val fullScale = cover + (1f - cover) * p
+    val halfWidth = source.width * fullScale * crop.width / 2f
+    val halfHeight = source.height * fullScale * crop.height / 2f
+    val center = sharedPhotoRect(tile, source, p).center
+    return SharedPhotoCropFrame(Rect(center.x - halfWidth, center.y - halfHeight,
+        center.x + halfWidth, center.y + halfHeight), crop)
+}
 
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
  * overlay travels from the measured thumbnail to the full viewer, while the
- * viewer fades in underneath; on an unchanged URI Back reverses that travel.
- * The source grid is unmounted while the viewer is live. If a scrub changed
- * the URI, callers close normally rather than animating to the WRONG tile.
+ * viewer chrome/backdrop fades in underneath. Exit uses a separately measured current tile,
+ * or fades when no authorized target was obtained. Entry state is unchanged.
  */
 @Composable
 internal fun SharedPhotoMotionLayer(
@@ -100,10 +209,15 @@ internal fun SharedPhotoMotionLayer(
     exiting: Boolean,
     onExitFinished: () -> Unit,
     modifier: Modifier = Modifier,
+    returnOrigin: SharedPhotoOrigin? = origin,
+    allowUnderlay: Boolean = false,
+    exitWithoutUnderlay: Boolean = false,
+    gestureFrame: Rect? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val disabled = remember(origin) { sharedPhotoAnimationDisabled(context) }
+    val exitDisabled = remember(exiting) { exiting && sharedPhotoAnimationDisabled(context) }
     val animated = origin != null && !disabled
     val progress = remember(origin) { Animatable(if (animated) 0f else 1f) }
     val currentOnExit = androidx.compose.runtime.rememberUpdatedState(onExitFinished)
@@ -111,44 +225,64 @@ internal fun SharedPhotoMotionLayer(
 
     LaunchedEffect(origin, exiting, animated) {
         if (exiting) {
-            if (animated) progress.animateTo(0f,
-                tween(SHARED_PHOTO_MS, easing = FastOutSlowInEasing))
+            if (!exitDisabled) {
+                progress.animateTo(0f,
+                    tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
+            }
             currentOnExit.value()
         } else if (animated) {
-            progress.animateTo(1f, tween(SHARED_PHOTO_MS, easing = FastOutSlowInEasing))
+            progress.animateTo(1f, tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
         }
     }
 
-    Box(modifier.fillMaxSize().clipToBounds().background(Color.Black)
+    val movingOrigin = if (exiting) returnOrigin else origin
+    val moving = if (exiting) !exitDisabled else animated
+    // Resolve geometry before composing either owner, so the same frame
+    // switches ownership atomically. Invalid dimensions retain the fade.
+    val cropFrame = if (moving && movingOrigin != null && windowRect.width > 0f &&
+        windowRect.height > 0f && (progress.value < 1f || exiting)
+    ) {
+        val oriented = viewerOrientedSize(movingOrigin.media, IntSize.Zero)
+        val fitted = if (exiting && gestureFrame != null) Rect(
+            windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
+            windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
+        else sharedPhotoFittedFrame(windowRect, oriented.width, oriented.height)
+        fitted?.let {
+            sharedPhotoReturnCrop(it, movingOrigin.bounds, progress.value)
+        }
+    } else null
+    Box(modifier.fillMaxSize().clipToBounds().drawBehind {
+        if (exiting && exitWithoutUnderlay) drawRect(Color.Black)
+        else if (exiting && !allowUnderlay) drawRect(Color.Black.copy(alpha = progress.value))
+        else if (!exiting && (!allowUnderlay || progress.value < 1f)) drawRect(Color.Black)
+    }
         .onGloballyPositioned { coords ->
             val now = coords.boundsInWindow()
             if (now != windowRect) windowRect = now
         }) {
         Box(Modifier.fillMaxSize().graphicsLayer {
-            alpha = if (animated) progress.value else 1f
-        }) { content() }
+            alpha = if (animated || exiting) progress.value else 1f
+        }) {
+            CompositionLocalProvider(LocalSharedPhotoViewerAlpha provides sharedPhotoViewerImageAlpha(cropFrame)) { content() }
+        }
 
-        // Draw only while a measured, authorized entry is moving. During the
-        // transition the image is a single low-resolution copy; GalleryViewer
-        // retains ownership of the full-res decode and of all gestures.
-        if (animated && origin != null && windowRect.width > 0f &&
-            windowRect.height > 0f && (progress.value < 1f || exiting)
-        ) {
-            val viewport = Rect(windowRect.left, windowRect.top,
-                windowRect.right, windowRect.bottom)
-            val frame = sharedPhotoRect(origin.bounds, viewport, progress.value)
+        if (cropFrame != null && movingOrigin != null) {
+            val frame = cropFrame.frame
             val density = LocalDensity.current
             Box(Modifier
-                .offset {
+                .absoluteOffset {
                     IntOffset((frame.left - windowRect.left).roundToInt(),
                         (frame.top - windowRect.top).roundToInt())
                 }
+                .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
                 .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
                     with(density) { frame.height.coerceAtLeast(1f).toDp() })
-                .alpha(1f - progress.value)
+                .clipToBounds()
                 .testTag(if (exiting) "atlas-shared-photo-exit"
                     else "atlas-shared-photo-enter")) {
-                MediaPreview(origin.media, Modifier.fillMaxSize(),
+                // Centered Crop on this derived clip renders the interpolated
+                // image-coordinate window at uniform scale (modulo pixel rounding).
+                MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
                     ContentScale.Crop, 600)
             }
         }

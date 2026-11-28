@@ -27,9 +27,29 @@ test("viewer motion is bounded to matching URI and access epoch", () => {
 
 test("return still uses the settled Viewer URI, and never shrinks to a different photo", () => {
   assert.match(main, /onExitSettledUri\s*=\s*\{ lastViewedUri ->/);
-  assert.match(main, /pendingViewerReturn\s*=\s*PendingViewerReturn\(/);
-  assert.match(main, /origin\.media\.uri == lastSettledViewerUri/);
+  assert.match(main, /val request = PendingViewerReturn\(contextItems, uri, returnRoute, publishedGallery\.epoch\)/);
+  assert.match(main, /else pendingViewerReturn = request/);
+  assert.match(main, /lastSettledViewerUri = lastViewedUri/);
+  assert.match(main, /returnPreparation\?\.request\?\.uri == lastSettledViewerUri/);
+  assert.match(main, /returnPreparation = MeasuredViewerReturn\(request\)/);
+  assert.match(main, /viewerReturnMatchesCurrentRoute\(preparation\.request, visible, returnRoute,/);
+  assert.match(main, /measuredReturnOrigin = target/);
+  assert.match(main, /returnOrigin = measuredReturnOrigin\?\.takeIf\s*\{\s*returnAuthorized && preparation\?\.measured\?\.bounds == it\.bounds/);
+  assert.match(motion, /media\.uri != request\.uri \|\| epoch != request\.accessEpoch/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+  assert.match(motion, /sharedPhotoReturnCrop\(it, movingOrigin\.bounds, progress\.value\)/);
   assert.match(main, /SharedPhotoMotionLayer\(/);
+});
+
+test("square, dated and ratio grids measure only the requested return tile", () => {
+  const ratio = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/featuregrid/AtlasRatioGallery.kt", import.meta.url), "utf8");
+  for (const source of [grid, timeline, ratio]) {
+    assert.match(source, /\.measureViewerReturn\(media, catalogueEpoch\)/);
+  }
+  assert.match(motion, /target\.request\.uri != media\.uri \|\| target\.request\.accessEpoch != epoch \|\| media\.isVideo/);
+  assert.match(motion, /target\.offer\(media, epoch, coordinates\.boundsInWindow\(\)/);
+  assert.match(motion, /onDispose \{ target\.clear\(\) \}/);
+  assert.match(motion, /timeoutMillis: Long = 1500L/);
 });
 
 test("disabled system animation scale and stale grants cancel pixels immediately", () => {
@@ -37,4 +57,195 @@ test("disabled system animation scale and stale grants cancel pixels immediately
   assert.match(motion, /TRANSITION_ANIMATION_SCALE/);
   assert.match(main, /if \(viewerUri != null && !viewerAllowed\)/);
   assert.match(main, /sharedPhotoOrigin = null/);
+});
+
+test("below-fit pinch uses the focused photo transform loop and settled return", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /viewerMayOwnPinchExit\(pinchOwned, latestCanPinchDismiss\(\)/);
+  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),/);
+  assert.match(viewer, /onPinchDismiss = \{\s*recordGestureFrame\(pinchExitPose\.value\)\s*returnToGallery\(\)/);
+  assert.match(viewer, /scaleX = zoomPose\.scale \* pinchPose\.scale/);
+});
+
+test("a fresh touch inherits a cancelling drag but must earn new dismissal intent", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /val dragBase = viewerDownExitRegrabBase\(dragOffset\.floatValue,/);
+  assert.match(viewer, /dragOffset\.floatValue = dragBase\s+tracking = dragBase > 0f/);
+  assert.match(viewer, /dragOffset\.floatValue = viewerDownExitTravel\(dragBase, travelY\)/);
+  assert.match(viewer, /downExitEligible = viewerMayStartDownExit\(\s*travelY, travelX, elapsed, reversedUp, touchSlopPx\)/);
+});
+
+test("idle settled photo prepositions without committing or freezing viewer input", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /pagerState\.settledPage == pagerState\.currentPage/);
+  assert.match(viewer, /collectLatest \{ uri ->\s*if \(uri != null\) \{\s*delay\(350L\)/);
+  assert.match(viewer, /latestPrepareCallback\?\.invoke\(uri\)/);
+  assert.match(main, /onPrepareSettledUri = \{ uri -> prepareViewerReturn\(uri\) \}/);
+  assert.match(main, /if \(!returnCommitted\) return@LaunchedEffect/);
+  assert.match(main, /if \(currentUri != null && returnCommitted\)/);
+  assert.match(main, /existing\.uri == uri &&\s*viewerReturnMatchesCurrentRoute/);
+});
+
+test("direct manipulation reveals only a measured settled return and fades chrome separately from the image", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(main, /val revealTargetUri = preparation\?\.measured\?\.media\?\.uri\?\.takeIf/);
+  assert.match(main, /allowUnderlay = revealTargetUri != null/);
+  assert.match(main, /returnRevealUri = revealTargetUri/);
+  assert.match(viewer, /returnRevealUri == items\[pagerState\.settledPage\.coerceIn\(items\.indices\)\]\.uri/);
+  assert.match(viewer, /drawBehind \{ drawRect\(Color\.Black\.copy\(alpha = exitBackdropAlpha\(\)\)\) \}/);
+  assert.equal((viewer.match(/graphicsLayer \{ alpha = exitBackdropAlpha\(\) \}/g) || []).length, 2);
+  assert.match(viewer, /focusedPinchExitPose = if \(focused\) pinchExitPose else null/);
+  assert.match(motion, /else if \(!exiting && \(!allowUnderlay \|\| progress\.value < 1f\)\) drawRect\(Color\.Black\)/);
+});
+
+test("a regrabbed pinch must earn fresh contraction before committing inherited shrink", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /var freshPinchScale = 1f/);
+  assert.match(viewer, /inheritedPinchPose = true/);
+  assert.match(viewer, /freshPinchScale = viewerFreshPinchScale\(freshPinchScale, gestureZoom\)/);
+  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),\s*inheritedPinchPose, freshPinchScale\)/);
+});
+
+test("a fresh single pointer can interrupt pinch return without starting a competing parent drag", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /val regrabPinch = viewerMayRegrabPinchExit\(pinchPose,/);
+  assert.match(viewer, /if \(regrabPinch\) pinchReturn\[0\]\?\.cancel\(\)/);
+  assert.match(viewer, /var claimed = zoomPose\.scale > 1\.01f \|\| regrabPinch/);
+  assert.match(viewer, /var pinchOwned = regrabPinch/);
+  assert.match(viewer, /var inheritedPinchPose = regrabPinch/);
+  assert.match(viewer, /if \(pinchExitPose\.value != ViewerPinchExitPose\(\)\) \{\s*cancelViewerDrag\(\)\s*break/);
+});
+
+
+test("non-grid return fades without a stale tile, freezes input, and cuts on revoked access", () => {
+  assert.match(main, /if \(readGalleryMediaGrant\(context\) != grants \|\|\s*vm\.publishedInventory\.value\.epoch != viewerAccessEpoch\) \{\s*closeViewer\(\)/);
+  assert.match(main, /returnPreparation = null\s+measuredReturnOrigin = null\s+returnCommitted = true\s+viewerExitShared = true/);
+  assert.match(main, /exitWithoutUnderlay = returnCommitted && preparation == null/);
+  assert.match(main, /if \(currentUri != null && returnCommitted\) \{\s*\/\/ Freeze further viewer interaction/);
+  assert.match(motion, /if \(exiting && exitWithoutUnderlay\) drawRect\(Color\.Black\)/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+  assert.match(motion, /if \(!exitDisabled\) \{\s*progress\.animateTo\(0f,/);
+});
+
+test("gesture return freezes the oriented fitted frame and does not repaint the revealed grid black", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /recordGestureFrame\(viewerDownExitPose\(dragOffset\.floatValue,/);
+  assert.match(viewer, /focusedReturnSize\?\.value = decodedSize/);
+  assert.match(viewer, /latestCommitGestureFrame\?\.invoke\(uri, sharedPhotoGestureFrame\(/);
+  assert.match(main, /onCommitGestureFrame = \{ uri, frame ->/);
+  assert.match(main, /committedGestureFrame\?\.first == it\.media\.uri/);
+  assert.match(motion, /if \(exiting && gestureFrame != null\) Rect\(/);
+  assert.match(motion, /else if \(exiting && !allowUnderlay\) drawRect/);
+});
+
+test("committed return derives its clip from normalized crop and uniform scale", () => {
+  assert.match(motion, /fun sharedPhotoReturnCrop\(/);
+  assert.match(motion, /val fullScale = cover \+ \(1f - cover\) \* p/);
+  assert.match(motion, /val crop = sharedPhotoRect\(tileCrop, Rect\(0f, 0f, 1f, 1f\), p\)/);
+  assert.match(motion, /sharedPhotoReturnCrop\(it, movingOrigin\.bounds, progress\.value\)/);
+  assert.match(motion, /val frame = cropFrame\.frame/);
+  assert.doesNotMatch(motion, /\.alpha\(1f - progress.value\)/);
+});
+
+test("FLOW-3 journey captures held, reversed and committed drag in both themes", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  for (const frame of ["flow3-drag-held", "flow3-drag-reversed", "flow3-drag-commit-mid", "flow3-drag-returned", "flow3-paged-back-mid"]) assert.ok(journey.includes(frame), frame);
+  assert.match(journey, /class SharedPhotoLightJourneyTest/);
+  assert.match(journey, /class SharedPhotoDarkJourneyTest/);
+});
+
+test("FLOW-3 journey targets below-fit pinch reversal and committed return in both themes", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  for (const frame of ["flow3-pinch-held", "flow3-pinch-reversed", "flow3-pinch-commit-mid", "flow3-pinch-returned"]) assert.ok(journey.includes(frame), frame);
+  assert.match(journey, /fun belowFitPinchReversesThenCommitsToMeasuredTile\(/);
+  assert.match(journey, /up\(0\); up\(1\)/);
+});
+
+test("FLOW-3 offscreen journey proves the actual settled tile identity, not just viewer closure", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun offscreenSettledPhotoReturnsToItsOwnTile\(/);
+  assert.match(journey, /onNodeWithTag\(targetTag, useUnmergedTree = true\)\.assertDoesNotExist\(\)/);
+  assert.match(journey, /performScrollToIndex\(OFFSCREEN_COUNT - 1\)/);
+  assert.match(journey, /onNodeWithTag\(targetTag, useUnmergedTree = true\)\.assertIsDisplayed\(\)/);
+  for (const frame of ["flow3-offscreen-before", "flow3-offscreen-back-mid", "flow3-offscreen-returned"]) assert.ok(journey.includes(frame), frame);
+});
+
+test("FLOW-3 quick Back during entry clears the old overlay before a different photo reopens", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun quickBackDuringEntryDoesNotLeakIntoNextPhoto\(/);
+  assert.match(journey, /assertTrue\("Quick Back requires an active entry overlay"/);
+  assert.match(journey, /assertTrue\("Entry and return overlays must not coexist"/);
+  assert.match(journey, /onNodeWithTag\(secondTag, useUnmergedTree = true\)\.performClick\(\)/);
+  for (const frame of ["flow3-quick-entry", "flow3-quick-returned", "flow3-quick-reopened"]) assert.ok(journey.includes(frame), frame);
+});
+
+test("FLOW-3 ratio rows offer measured entry only on open and return to the same ratio tile", () => {
+  const ratio = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/featuregrid/AtlasRatioGallery.kt", import.meta.url), "utf8");
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(ratio, /onGloballyPositioned \{ sourceBounds\[0\] = it\.boundsInWindow\(\) \}/);
+  assert.match(ratio, /if \(selectionCurrent != null && toggle != null\) toggle\(media\)\s*else \{\s*SharedPhotoOrigins\.offer\(media, catalogueEpoch, sourceBounds\[0\]\)\s*currentOpen\(media\)/);
+  assert.match(journey, /fun originalRatioPhotoTravelsBackToSameTile\(/);
+  for (const frame of ["flow3-ratio-before", "flow3-ratio-enter", "flow3-ratio-back-mid", "flow3-ratio-returned"]) assert.ok(journey.includes(frame), frame);
+});
+
+test("FLOW-3 entry and ordinary Back use oriented fitted image geometry rather than full-window crop", () => {
+  assert.match(motion, /viewerOrientedSize\(movingOrigin\.media, IntSize\.Zero\)/);
+  assert.match(motion, /sharedPhotoFittedFrame\(windowRect, oriented\.width, oriented\.height\)/);
+  assert.match(motion, /val cropFrame = if \(moving && movingOrigin != null/);
+  assert.match(motion, /if \(cropFrame != null && movingOrigin != null\) \{/);
+  assert.doesNotMatch(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport/);
+});
+
+test("FLOW-3 non-grid story return samples fade without a stale tile and restores the same moment", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun nonGridStoryReturnFadesWithoutTile\(/);
+  assert.match(journey, /takenAtOf = \{ step -> today\.minusYears/);
+  assert.match(journey, /No-target Back must restore the same story moment/);
+  for (const frame of ["flow3-story-before", "flow3-story-fade-mid", "flow3-story-restored"]) assert.ok(journey.includes(frame), frame);
+});
+
+test("FLOW-3 registers every paired motion capture in the strict hosted evidence manifest", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  const declared = readFileSync(new URL("../../scripts/ui-evidence.d/23-shared-photo.txt", import.meta.url), "utf8")
+    .split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#"));
+  const expected = [...journey.matchAll(/(?:saveUiEvidence|captureReturnMidpoint)\("([^"]+)-\$mode\.png"\)/g)]
+    .flatMap(match => ["light", "dark"].map(theme => match[1] + "-" + theme));
+  assert.ok(expected.length > 8, "capture inventory must include FLOW-3");
+  assert.deepEqual(declared.sort(), expected.sort());
+});
+
+test("FLOW-3 real host open timing records real Android frames and both PERF-3 callback stamps", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun viewerOpenTimingFromSyntheticGridTile\(/);
+  assert.match(journey, /ViewerPhotoFirstFrameAtKey/);
+  assert.match(journey, /ViewerPhotoSharpAtKey/);
+  assert.match(journey, /FrameMetrics\.TOTAL_DURATION/);
+  assert.match(journey, /FrameMetrics\.INTENDED_VSYNC_TIMESTAMP/);
+  assert.match(journey, /injectInputEvent\(event, true\)/);
+  assert.match(journey, /FLOW3_OPEN_TIMING/);
+  assert.match(journey, /frame_p90_ms/);
+});
+
+test("FLOW-3 committed grid return has one bounded measurement wait and no entry-origin fallback", () => {
+  assert.match(motion, /suspend fun awaitMeasuredViewerReturn\(/);
+  assert.match(motion, /timeoutMillis: Long = 1500L/);
+  assert.match(motion, /withTimeoutOrNull\(timeoutMillis\) \{ candidates\.filterNotNull\(\)\.first\(\) \}/);
+  assert.match(main, /val target = awaitMeasuredViewerReturn\(snapshotFlow \{\s*preparation\.measured\?\.takeIf/);
+  assert.match(main, /if \(returnPreparation === preparation && !viewerExitShared\) \{\s*pendingViewerReturn = null\s*pendingRatioReturn = null\s*pendingRatioAnchor = null/);
+  assert.match(main, /measuredReturnOrigin = target\s*viewerExitShared = true/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+});
+
+test("one moving photo owns drawing while the viewer and matching destination are suppressed", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(motion, /LocalSharedPhotoViewerAlpha provides sharedPhotoViewerImageAlpha\(cropFrame\)/);
+  assert.match(viewer, /alpha = sharedPhotoViewerAlpha/);
+  assert.match(motion, /\.graphicsLayer \{ alpha = 0f \}/);
+  assert.doesNotMatch(motion, /\.alpha\(1f - progress.value\)/);
+});
+test("animation-off Back closes directly before any committed wait and keeps only the authorized anchor", () => {
+  assert.match(main, /if \(sharedPhotoAnimationDisabled\(context\)\) \{\s*closeViewer\(keepReturnAnchor =/);
+  assert.match(main, /if \(returnPreparation != null && !keepReturnAnchor\)/);
+  assert.match(main, /fun canKeepReturnAnchor\(\): Boolean/);
+  assert.doesNotMatch(main, /withTimeoutOrNull\(1500L\)/);
 });

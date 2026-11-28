@@ -30,6 +30,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import nl.atlas.gallery.SharedPhotoOrigins
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.Job
@@ -57,6 +61,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.measureViewerReturn
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.onLongClick
@@ -295,11 +300,14 @@ fun AtlasRatioGallery(
                             val isSelected = selecting && media.uri in selectedMediaUris.orEmpty()
                             val cellWidth = with(density) { row.cellWidthsPx[inRow].toDp() }
                             val cellHeight = with(density) { row.heightPx.toDp() }
+                            val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
                             Box(
                                 // #504: square-cornered, no placeholder box; the
                                 // photo fills its cell edge to edge (Samsung look).
                                 Modifier.width(cellWidth).height(cellHeight)
                                     .clipToBounds()
+                                    .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
+                                    .measureViewerReturn(media, catalogueEpoch)
                                     // The pointer long press belongs to the list's drag
                                     // detector; TalkBack gets the same start as an action.
                                     .then(if (onSelectionChange != null && !selecting) Modifier.semantics {
@@ -314,7 +322,10 @@ fun AtlasRatioGallery(
                                         // Live state at click time: never open mid-selection.
                                         val toggle = toggleCurrent
                                         if (selectionCurrent != null && toggle != null) toggle(media)
-                                        else currentOpen(media)
+                                        else {
+                                            SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
+                                            currentOpen(media)
+                                        }
                                     }
                                     .then(if (selecting) Modifier.semantics { selected = isSelected }
                                         else Modifier)

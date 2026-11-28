@@ -47,6 +47,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.featuredesign.AtlasTabPillHeight
 import androidx.compose.ui.graphics.asImageBitmap
@@ -1824,6 +1826,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var sharedPhotoOrigin by remember { mutableStateOf<SharedPhotoOrigin?>(null) }
     var lastSettledViewerUri by remember { mutableStateOf<String?>(null) }
     var viewerExitShared by remember { mutableStateOf(false) }
+    var returnPreparation by remember(viewerUri) { mutableStateOf<MeasuredViewerReturn?>(null) }
+    var returnCommitted by remember(viewerUri) { mutableStateOf(false) }
+    var measuredReturnOrigin by remember(viewerUri) { mutableStateOf<SharedPhotoOrigin?>(null) }
+    var committedGestureFrame by remember(viewerUri) { mutableStateOf<Pair<String, androidx.compose.ui.geometry.Rect?>?>(null) }
     var pendingViewerReturn by remember {
         mutableStateOf<PendingViewerReturn?>(null, referentialEqualityPolicy())
     }
@@ -2407,10 +2413,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             searchableAlbumCards != null)
     // For original proportions, the URI lookup is also off-main; the
     // GalleryViewer callback must never linearly scan 150k photos on touch.
-    LaunchedEffect(pendingRatioReturn, viewerUri, CatalogSourceKey(visible),
+    LaunchedEffect(pendingRatioReturn, viewerUri, returnPreparation, CatalogSourceKey(visible),
         originalProportions, grants, awaitingScopedRefresh, publishedGallery.epoch) {
         val request = pendingRatioReturn ?: return@LaunchedEffect
-        if (viewerUri != null) return@LaunchedEffect
+        if (viewerUri != null && returnPreparation?.request !== request) return@LaunchedEffect
         if (!originalProportions ||
             !viewerReturnMatchesCurrentRoute(request, visible, 0,
                 grants.hasAny && publishedGallery.showable(grants),
@@ -2438,10 +2444,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // The plan callback can finish before the deferred URI lookup, or after.
     // Keep both immutable prerequisites until they match the current grant.
     LaunchedEffect(pendingRatioAnchor, ratioLayout, CatalogSourceKey(visible),
-        originalProportions, viewerUri, grants, awaitingScopedRefresh,
+        originalProportions, viewerUri, returnPreparation, grants, awaitingScopedRefresh,
         publishedGallery.epoch) {
         val anchor = pendingRatioAnchor ?: return@LaunchedEffect
-        if (viewerUri != null) return@LaunchedEffect
+        if (viewerUri != null && returnPreparation?.request?.uri != anchor.second) return@LaunchedEffect
         if (!originalProportions || !grants.hasAny ||
             !publishedGallery.showable(grants)) {
             pendingRatioAnchor = null
@@ -2460,7 +2466,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (pendingRatioAnchor == anchor &&
             ratioLayout === ready && ratioCatalog === visible &&
             ratioEpoch == publishedGallery.epoch &&
-            viewerUri == null && grants.hasAny &&
+            (viewerUri == null || returnPreparation?.request?.uri == anchor.second) && grants.hasAny &&
             publishedGallery.showable(grants)) {
             ratioListState.scrollToItem(target.firstRowIndex,
                 target.firstRowScrollOffsetPx)
@@ -2468,14 +2474,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (pendingRatioAnchor == anchor) pendingRatioAnchor = null
     }
 
-    // Viewer is mounted as a full-screen route, so the grid does not exist
-    // while GalleryViewer emits onExitSettledUri. Wait for the correct screen,
-    // grant and actual LazyGrid item count BEFORE moving the destination.
-    LaunchedEffect(pendingViewerReturn, viewerUri, CatalogSourceKey(visible),
+    // Mount the destination under the still-opaque viewer before seeking.
+    // Non-viewer anchors continue to use the same route/epoch checks.
+    LaunchedEffect(pendingViewerReturn, viewerUri, returnPreparation, CatalogSourceKey(visible),
         tab, personFilter, originalProportions, timelineEnabled, sort,
         grants, awaitingScopedRefresh, publishedGallery.epoch) {
         val request = pendingViewerReturn ?: return@LaunchedEffect
-        if (viewerUri != null) return@LaunchedEffect
+        if (viewerUri != null && returnPreparation?.request !== request) return@LaunchedEffect
         val route = when {
             personFilter != null -> 2
             tab == 3 -> 1
@@ -2537,7 +2542,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 snapshotFlow { timelineGridState.layoutInfo.totalItemsCount }
                     .first { it == timeline.slots.size && it > slot }
             } != null
-            if (ready && pendingViewerReturn === request && viewerUri == null &&
+            if (ready && pendingViewerReturn === request &&
+                (viewerUri == null || returnPreparation?.request === request) &&
                 admittedTimelineReturnSlotOrNull(
                     request, visible, route,
                     authorized = grants.hasAny &&
@@ -2563,7 +2569,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 snapshotFlow { destination.layoutInfo.totalItemsCount }
                     .first { it > index }
             } != null
-            if (ready && pendingViewerReturn === request && viewerUri == null &&
+            if (ready && pendingViewerReturn === request &&
+                (viewerUri == null || returnPreparation?.request === request) &&
                 viewerReturnCanApply(request, visible, route,
                     grantAuthorized = grants.hasAny &&
                         publishedGallery.showable(grants),
@@ -2628,12 +2635,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         lastSettledViewerUri = null
         viewerExitShared = false
+        returnPreparation = null
+        returnCommitted = false
+        measuredReturnOrigin = null
+        committedGestureFrame = null
         PerformanceSession.viewerOpened()
         viewerItems = items
         viewerAccessEpoch = publishedGallery.epoch
         viewerUri = uri
     }
-    fun closeViewer() {
+    fun closeViewer(keepReturnAnchor: Boolean = false) {
         if (viewerUri != null) {
             PerformanceSession.updateViewer()
             if (grants.hasAny && publishedGallery.showable(grants)) {
@@ -2646,6 +2657,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         sharedPhotoOrigin = null
         lastSettledViewerUri = null
         viewerExitShared = false
+        if (returnPreparation != null && !keepReturnAnchor) {
+            pendingViewerReturn = null
+            pendingRatioReturn = null
+            pendingRatioAnchor = null
+        }
+        returnPreparation = null
+        returnCommitted = false
+        measuredReturnOrigin = null
+        committedGestureFrame = null
         SharedPhotoOrigins.clear()
     }
     fun galleryAccessCurrent(): Boolean = grants.hasAny &&
@@ -3460,6 +3480,95 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
     }
     val currentUri = viewerUri?.takeIf { viewerAllowed }
+    val preparation = returnPreparation
+    val returnRoute = when {
+        personFilter != null -> 2
+        tab == 3 -> 1
+        else -> 0
+    }
+    val returnAuthorized = preparation != null && viewerAllowed &&
+        viewerAccessEpoch == publishedGallery.epoch && tab != 1 &&
+        faceStep == null && similarStep == null &&
+        viewerReturnMatchesCurrentRoute(preparation.request, visible, returnRoute,
+            grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch)
+    // A speculative preparation is never a close. Reuse it only for the same
+    // settled URI, source reference, route and epoch; a new settled item gets
+    // its own measured target and cancels the old seek.
+    fun prepareViewerReturn(uri: String) {
+        if (returnCommitted || viewerExitShared) return
+        val existing = returnPreparation?.request
+        if (existing != null && existing.uri == uri &&
+            viewerReturnMatchesCurrentRoute(existing, visible, returnRoute,
+                grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch) &&
+            viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
+            contextItems === visible && tab != 1 && faceStep == null && similarStep == null) return
+        pendingViewerReturn = null
+        pendingRatioReturn = null
+        pendingRatioAnchor = null
+        returnPreparation = null
+        if (!viewerAllowed || viewerAccessEpoch != publishedGallery.epoch ||
+            !grants.hasAny || !publishedGallery.showable(grants) ||
+            contextItems == null || contextItems !== visible || tab == 1 ||
+            faceStep != null || similarStep != null) return
+        val request = PendingViewerReturn(contextItems, uri, returnRoute, publishedGallery.epoch)
+        if (tab == 0 && originalProportions) pendingRatioReturn = request
+        else pendingViewerReturn = request
+        returnPreparation = MeasuredViewerReturn(request)
+    }
+    fun canKeepReturnAnchor(): Boolean {
+        val request = returnPreparation?.request ?: return false
+        return request.uri == lastSettledViewerUri && viewerAllowed &&
+            viewerAccessEpoch == publishedGallery.epoch && contextItems === visible &&
+            tab != 1 && faceStep == null && similarStep == null &&
+            readGalleryMediaGrant(context) == grants &&
+            vm.publishedInventory.value.epoch == request.accessEpoch &&
+            viewerReturnMatchesCurrentRoute(request, visible, returnRoute,
+                grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch)
+    }
+    // Await both the existing URI seek and the actual requested tile layout.
+    // One overall deadline bounds missing tiles and slow projection/measurement.
+    LaunchedEffect(preparation, returnAuthorized, returnCommitted, viewerExitShared) {
+        if (preparation == null) return@LaunchedEffect
+        if (!returnAuthorized || readGalleryMediaGrant(context) != grants ||
+            vm.publishedInventory.value.epoch != preparation.request.accessEpoch) {
+            pendingViewerReturn = null
+            pendingRatioReturn = null
+            pendingRatioAnchor = null
+            if (returnCommitted) closeViewer() else returnPreparation = null
+            return@LaunchedEffect
+        }
+        if (!returnCommitted) return@LaunchedEffect
+        if (viewerExitShared) return@LaunchedEffect
+        if (sharedPhotoAnimationDisabled(context)) {
+            closeViewer(keepReturnAnchor = canKeepReturnAnchor())
+            return@LaunchedEffect
+        }
+        val target = awaitMeasuredViewerReturn(snapshotFlow {
+            preparation.measured?.takeIf {
+                pendingViewerReturn == null && pendingRatioReturn == null &&
+                    pendingRatioAnchor == null
+            }
+        })
+        if (returnPreparation === preparation && !viewerExitShared) {
+            pendingViewerReturn = null
+            pendingRatioReturn = null
+            pendingRatioAnchor = null
+            if (readGalleryMediaGrant(context) != grants ||
+                vm.publishedInventory.value.epoch != preparation.request.accessEpoch) {
+                closeViewer()
+            } else {
+                measuredReturnOrigin = target
+                viewerExitShared = true
+            }
+        }
+    }
+    // Do not expose a speculative grid until its seek and actual tile
+    // measurement are complete. The viewer also checks its current settled URI.
+    val revealTargetUri = preparation?.measured?.media?.uri?.takeIf {
+        returnAuthorized && pendingViewerReturn == null && pendingRatioReturn == null &&
+            pendingRatioAnchor == null
+    }
+    val renderViewer: @Composable () -> Unit = {
     if (contextItems != null && currentUri != null) {
       // #662: the viewer stays dark whatever the phone's setting, as on Samsung.
       AtlasDarkRoute {
@@ -3470,6 +3579,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     it.media.uri == currentUri
             },
             exiting = viewerExitShared,
+            allowUnderlay = revealTargetUri != null,
+            exitWithoutUnderlay = returnCommitted && preparation == null,
+            returnOrigin = measuredReturnOrigin?.takeIf {
+                returnAuthorized && preparation?.measured?.bounds == it.bounds &&
+                    (committedGestureFrame == null ||
+                        (committedGestureFrame?.first == it.media.uri && committedGestureFrame?.second != null))
+            },
+            gestureFrame = committedGestureFrame?.second,
             onExitFinished = { if (viewerUri != null) closeViewer() }
         ) {
         GalleryViewer(
@@ -3506,32 +3623,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
                 launchResult != PhotoEditorHandoff.Result.UNAVAILABLE
             },
+            onPrepareSettledUri = { uri -> prepareViewerReturn(uri) },
+            returnRevealUri = revealTargetUri,
+            onCommitGestureFrame = { uri, frame ->
+                if (!returnCommitted && !viewerExitShared) committedGestureFrame = uri to frame
+            },
             onExitSettledUri = { lastViewedUri ->
-                // This callback runs before onBack even on fast filmstrip scrubs.
-                // An exit must never contract towards the originally tapped
-                // cell if a different photo is now settled.
-                lastSettledViewerUri = lastViewedUri
-                if (viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
-                    grants.hasAny &&
-                    publishedGallery.showable(grants) &&
-                    // Stories (#439) open the viewer from Albums: no grid to restore.
-                    contextItems === visible && tab != 1 && faceStep == null &&
-                    similarStep == null) {
-                    if (tab == 0 && originalProportions) {
-                        // Only record the immutable intent on the click path.
-                        // Off-main resolution happens after the viewer unmounts.
-                        pendingRatioReturn = PendingViewerReturn(
-                            contextItems, lastViewedUri, 0,
-                            publishedGallery.epoch)
-                    } else {
-                        pendingViewerReturn = PendingViewerReturn(
-                            contextItems, lastViewedUri,
-                            when {
-                                personFilter != null -> 2
-                                tab == 3 -> 1
-                                else -> 0
-                            }, publishedGallery.epoch)
-                    }
+                if (!returnCommitted && !viewerExitShared) {
+                    // Back during an unsettled scrub still uses the last settled item.
+                    lastSettledViewerUri = lastViewedUri
+                    prepareViewerReturn(lastViewedUri)
                 }
             },
             // "Find this person" only from gallery browsing, not from results.
@@ -3579,25 +3680,43 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
             },
             onBack = {
-                val origin = sharedPhotoOrigin
-                if (!viewerExitShared && origin != null &&
-                    origin.media.uri == lastSettledViewerUri &&
-                    viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
-                    grants.hasAny && publishedGallery.showable(grants) &&
-                    !sharedPhotoAnimationDisabled(context)) {
-                    viewerExitShared = true
-                } else if (!viewerExitShared) {
-                    // Far scrub, videos and missing measured cells use the
-                    // existing URI-accurate return anchor without fake motion.
-                    closeViewer()
+                if (!returnCommitted && !viewerExitShared) {
+                    if (sharedPhotoAnimationDisabled(context)) {
+                        // Cut synchronously; the existing URI seek effects may finish
+                        // after the viewer is gone, with their own route/epoch checks.
+                        closeViewer(keepReturnAnchor = canKeepReturnAnchor())
+                    } else if (returnPreparation?.request?.uri == lastSettledViewerUri &&
+                        returnPreparation != null) {
+                        returnCommitted = true
+                    } else {
+                        // Non-grid sources have no mounted destination or safe
+                        // tile. Fade the viewer to its black ground, then restore
+                        // the original route; never animate toward the entry tile.
+                        // Revoked access must cut immediately, not retain pixels.
+                        if (readGalleryMediaGrant(context) != grants ||
+                            vm.publishedInventory.value.epoch != viewerAccessEpoch) {
+                            closeViewer()
+                        } else {
+                            pendingViewerReturn = null
+                            pendingRatioReturn = null
+                            pendingRatioAnchor = null
+                            returnPreparation = null
+                            measuredReturnOrigin = null
+                            returnCommitted = true
+                            viewerExitShared = true
+                        }
+                    }
                 }
             }
         )
         }
       }
-        return
+    }
     }
 
+    // Special routes do not have a measurable grid destination. Preserve their
+    // existing return path; never mount them as a shared-element underlay.
+    if (currentUri == null) {
     val pendingSimilarReturn = similarReturn
     if (pendingSimilarReturn != null && similarStep == null) {
         LaunchedEffect(pendingSimilarReturn) {
@@ -3716,6 +3835,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
+    }
+
+    Box(Modifier.fillMaxSize()) {
+    if (currentUri == null || returnAuthorized) {
+    CompositionLocalProvider(LocalMeasuredViewerReturn provides preparation) {
+    Box(Modifier.fillMaxSize().then(if (currentUri != null)
+        Modifier.clearAndSetSemantics {} else Modifier)) {
     // The content and floating navigation share the underlying *drawn* page.
     // The recorded layer never includes the pill or selection actions.
     val tabBackdrop = rememberAtlasTabBackdropState()
@@ -4895,6 +5021,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // keyboard is closed, and right above the keyboard when it is open.
     SearchHistorySnackbarHost(searchHistory, Modifier.align(Alignment.BottomCenter),
         bottomClearance = if (!settingsOpen && !statusOpen) AtlasTabPillHeight + 22.dp else 8.dp)
+    }
+    }
+    }
+    }
+    }
+    renderViewer()
+    if (currentUri != null && returnCommitted) {
+        // Freeze further viewer interaction until this one close completes.
+        BackHandler { }
+        Box(Modifier.fillMaxSize().pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) awaitPointerEvent().changes.forEach { it.consume() }
+            }
+        })
     }
     }
 }
