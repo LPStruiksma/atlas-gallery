@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,6 +53,8 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
 
     @Test fun photoTravelsFromMeasuredTileAndReturnsToSameCell() {
         val tileTag = firstTile()
+        val a3Before = actionSamples(3)
+        val a7Before = actionSamples(7)
         compose.mainClock.autoAdvance = false
         try {
             compose.onNodeWithTag(tileTag, useUnmergedTree = true).performClick()
@@ -68,6 +71,10 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
             compose.mainClock.advanceTimeBy(320L)
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-photo-counter").assertExists()
+            // A3 must publish while the viewer is still mounted, not on Back.
+            compose.mainClock.autoAdvance = true
+            compose.awaitThat("shared entry publishes A3 before Back") { actionSamples(3) > a3Before }
+            compose.mainClock.autoAdvance = false
             compose.onNodeWithTag("atlas-back").performClick()
             compose.mainClock.advanceTimeBy(80L)
             compose.waitForIdle()
@@ -84,15 +91,27 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
             compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithTag(tileTag, useUnmergedTree = true).assertExists()
+        compose.awaitThat("shared exit publishes A7") { actionSamples(7) > a7Before }
 
         // Reopen, move to a different settled photo, and Back. The original
         // thumbnail must not be reused for a different MediaStore URI.
+        val reopenA3Before = actionSamples(3)
         compose.onNodeWithTag(tileTag, useUnmergedTree = true).performClick()
         compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        compose.awaitThat("reopened focused preview is a Coil memory cache hit") {
+            compose.onAllNodes(SemanticsMatcher("memory-cached focused preview") {
+                it.config.getOrNull(ViewerPhotoPreviewMemoryHitKey) == true
+            }, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.awaitThat("cached reopen publishes a fresh A3 before Back") {
+            actionSamples(3) > reopenA3Before
+        }
+        val a4Before = actionSamples(4)
         val start = counter().substringBefore(" of ").toInt() - 1
         val target = if (start == 0) 1 else start - 1
         compose.onNodeWithTag("atlas-thumbnail-$target").performClick()
-        compose.waitUntil(10_000L) { counter().startsWith("${target + 1} of ") }
+        compose.awaitThat("filmstrip target settled") { counter().startsWith("${target + 1} of ") }
+        compose.awaitThat("filmstrip selection publishes A4 before Back") { actionSamples(4) > a4Before }
         compose.onNodeWithTag("atlas-back").performClick()
         compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
         compose.waitUntil(10_000L) {
@@ -126,6 +145,14 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private fun counter() = compose.onNodeWithTag("atlas-photo-counter")
         .fetchSemanticsNode().config[SemanticsProperties.Text]
         .joinToString("") { it.text }
+
+    private fun actionSamples(action: Int): Int {
+        var count = -1
+        compose.runOnIdle {
+            count = PerformanceSession.aggregate.snapshot("action_a${action}_ms").count
+        }
+        return count
+    }
 }
 
 /**

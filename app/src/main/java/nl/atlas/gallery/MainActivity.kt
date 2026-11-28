@@ -3475,6 +3475,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         GalleryViewer(
             contextItems, currentUri,
             timingProbe = PerformanceSession.viewerProbe(),
+            onViewerTimingUpdated = PerformanceSession::updateViewer,
             // Trash went through Android's own consent dialog; only RESULT_OK lands here.
             // Drop the photo from this viewer and show its neighbour, like Samsung does.
             onTrashed = { gone ->
