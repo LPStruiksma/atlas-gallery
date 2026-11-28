@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="nl.atlas.shareproof.publisher.CONTROL" android:protectionLevel="signature" />
+    <queries><package android:name="nl.atlas.shareproof.recipient" /></queries>
+    <application android:allowBackup="false" android:label="Synthetic share publisher">
+        <activity android:name=".FixtureActivity" android:exported="true"
+            android:permission="nl.atlas.shareproof.publisher.CONTROL"
+            android:screenOrientation="portrait" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <provider android:name=".FixtureProvider" android:authorities="nl.atlas.shareproof.publisher.proof"
+            android:exported="false" android:grantUriPermissions="false">
+            <grant-uri-permission android:path="/probe" />
+        </provider>
+    </application>
+</manifest>

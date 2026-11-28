@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="nl.atlas.shareproof.publisher.CONTROL" />
+    <queries><package android:name="nl.atlas.shareproof.publisher" /></queries>
+    <application android:allowBackup="false" android:label="Synthetic share recipient">
+        <activity android:name=".RecipientActivity" android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+    </application>
+</manifest>
