@@ -1,3 +1,12 @@
 # SPLIT-1D standalone synthetic preview (#229)
+# R2 states captured only by test-owned fake models; no private faces.
+split-preview-synthetic-empty
+split-preview-synthetic-one-group
 split-preview-synthetic-light
 split-preview-synthetic-dark
+split-preview-synthetic-long-review-light
+split-preview-synthetic-long-review-dark
+split-preview-synthetic-loading
+split-preview-synthetic-error
+split-preview-synthetic-selected-light
+split-preview-synthetic-selected-dark
