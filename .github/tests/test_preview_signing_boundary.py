@@ -70,9 +70,9 @@ class PreviewSigningBoundaryTest(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertIn(line, self.workflow)
         self.assertEqual(
-            self.workflow.count("runs-on: ubuntu-24.04"), 3,
-            "Keep the Android build, the emulator shards and the emulator-ui "
-            "aggregate (#588) on the pinned acceptance host",
+            self.workflow.count("runs-on: ubuntu-24.04"), 4,
+            "Keep build, upgrade, suite shards and the emulator-ui "
+            "aggregate (#989) on the pinned acceptance host",
         )
 
     def test_environment_values_are_rejected_without_logging_them(self):
